@@ -11,19 +11,19 @@
 [One paragraph: What is the system? Who is it for? What are its 3–4 core features?
 This paragraph is your approval request — see the Project Brief, Section 2.]
 
-An interactive web platform designed to help job seekers optimize their resumes for Applicant Tracking Systems (ATS) and specific job postings. Users upload a draft resume (PDF/Docx) and paste a target job description to receive instant evaluation metrics. The system parses the document, runs asynchronous keyword and semantic gap analysis, and uses Gemini 1.5 Pro to generate actionable, section-by-section bullet point revisions and tailored cover letters.
+An interactive full-stack web application designed to evaluate and optimize candidate resumes against specific job descriptions. Users upload a resume (PDF/DOCX) and paste a target job posting to receive immediate analysis and AI-assisted improvements. Rather than relying solely on external API calls, the system executes custom, deterministic domain logic such as calculating rule-based keyword match percentages, enforcing section structure validations, and flagging unquantified bullet points before invoking AI. Gemini 1.5 Pro is used directly via Google AI Studio as the single external AI service to generate section bullet revisions and tailored cover letter drafts grounded in the candidate's background. 
 
-Core Features:
-1.Automated Document Parsing & Parsing Visualizer: Extracts text and structural sections from uploaded resume formats.
-2.ATS Compatibility & Keyword Gap Analysis: Computes real-time keyword alignment and semantic relevance scores against the provided job description.
-3.AI Bullet Point Refinement: Utilizes Gemini 1.5 Pro via Google AI Studio API to suggest high-impact, quantified resume bullet updates tailored to key job requirements.
-4.Tailored Draft Generation: Generates customized cover letter drafts directly grounded in the candidate's existing background and target role requirements.
+Core Features: 
+1. Automated Document Parsing & Visualizer: Extracts raw text and structural sections (Education, Experience, Skills) locally from uploaded PDF/DOCX files and displays a side-by-side parsed preview.
+2. Deterministic Resume Audit & ATS Keyword Analysis: Evaluates resumes using custom internal domain rules—calculating exact keyword overlap scores, flagging bullet points missing quantified metrics, and identifying structural format gaps without needing external APIs.
+3. AI Bullet Point Refinement: Direct API integration with Gemini 1.5 Pro to suggest high-impact, quantified bullet point rewrites specifically tailored to key job requirements.
+4. Tailored Draft Generation: Generates customized cover letter drafts grounded in the candidate’s extracted experience and target job requirements. 
 
-Tech Stack:
-1.Frontend: React / Next.js (Simple UI with file drag-and-drop & score visualizer)
-2.Backend: Python (FastAPI / Flask)
-3.AI / Orchestration: Gemini 1.5 Pro API via Google AI Studio, LangChain/LlamaIndex
-4.Database & Queue: PostgreSQL, Redis/Celery (for handling asynchronous parsing tasks)
+Tech Stack: 
+1. Frontend: React / Next.js (Simple UI with file drag-and-drop & score visualizer)
+2. Backend: Python (FastAPI / Flask) running lightweight synchronous processing
+3. AI Integration: Google AI Studio (Gemini 1.5 Pro direct API call single external service)
+4. Database: PostgreSQL (or SQLite for simple local development)
 
 ## How to run
 
