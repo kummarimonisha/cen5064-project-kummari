@@ -37,12 +37,12 @@ instructor will follow it literally on conference days.]
 
 ### Tier breakdown (Session 2 studio)
 
-| Tier | Responsibilities in THIS system |
+| Tier | Responsibilities in THIS system | Class 
 |------|--------------------------------|
-| Presentation | [what your UI layer does] |
-| Service | [what your use-case/orchestration layer does] |
-| Domain | [your entities and business rules] |
-| Data | [how and where data is stored] |
+| Presentation | ResumeUploadView - Manages the drag-and-drop UI and client-side file validation. ScoreVisualizer - Renders the calculated ATS keyword overlap and audit results. JobDescriptionForm - Collects and sanitizes the target job posting text. |
+| Service | ResumeAnalysisService - Orchestrates the flow of parsing the resume, running domain audits, and returning the complete analysis. CoverLetterService - Coordinates passing parsed data and job requirements to the AI client to generate drafts.|
+| Domain | Resume - Represents the candidate's extracted data and guards its own state. ATSScorer - Calculates the deterministic keyword overlap percentage. BulletPointAuditor - Evaluates experience bullets to flag missing quantified metrics.|
+| Data | DocumentParser - Extracts raw text and structural sections from uploaded PDF/DOCX files. GeminiAIClient - Handles the direct HTTP network calls to Google AI Studio. ResumeRepository - Manages saving and loading analysis results to the database.|
 
 ### C4 — Context & Container (Session 3 studio)
 
