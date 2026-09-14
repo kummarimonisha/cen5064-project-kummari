@@ -49,18 +49,21 @@ instructor will follow it literally on conference days.]
 ```mermaid
 %% Replace this placeholder with YOUR system's context diagram.
 flowchart TB
-    user([Candidate]) -->|uses| system[Resume Analyzer]
-    system -->|stores data in| db[(Database)]
+    user([Job Candidate]) -->|Uploads resume and Job description| system[Resume Analyzer System]
+    system -->|sends text for bullet refinement| gemini[Google AI studio/ Gemini API]
 ```
 
 ```mermaid
 %% Container view: your containers should match the tier table above.
 flowchart TB
-    subgraph YourSystem [Your System]
-        ui[Web UI / CLI<br/>Presentation] --> api[Application / Service]
-        api --> domain[Domain Model]
-        domain --> db[(Database<br/>Data tier)]
+    user([Job Candidate]) -->|Uses via browser| ui[Web UI: Next.js<br/>Presentation Tier]
+        
+    subgraph Backend [Backend Application]
+    ui -->|REST/JSON calls| svc[FastAPI / Flask App<br/>Service & Domain Tiers]
     end
+        
+    svc -->|Reads/Writes analysis| db[(PostgreSQL / SQLite<br/>Data Tier)]
+    svc -->|HTTP API calls| gemini[Google AI Studio<br/>External System]
 ```
 
 ### UML — Class & Sequence (Session 3 studio)
@@ -68,26 +71,56 @@ flowchart TB
 ```mermaid
 %% Class diagram: your 3–4 core domain classes.
 classDiagram
-    class ExampleEntity {
-        -id: Long
-        -name: String
-        +doSomething()
+    class Resume {
+        -rawText: String
+        -experienceBullets: List~String~
+        +getBullets() List~String~
     }
+    
+    class JobDescription {
+        -rawText: String
+        -targetKeywords: List~String~
+        +getKeywords() List~String~
+    }
+    
+    class ATSScorer {
+        +calculateOverlap(Resume, JobDescription) float
+    }
+    
+    class BulletPointAuditor {
+        +flagUnquantified(bullets: List~String~) List~String~
+    }
+
+    Resume "1" --> "1" ATSScorer : evaluated by
+    JobDescription "1" --> "1" ATSScorer : sets criteria
+    Resume "1" --> "1" BulletPointAuditor : audited by
 ```
 
 ```mermaid
 %% Sequence diagram: ONE core use case, end to end.
 sequenceDiagram
-    actor U as User
-    participant UI
-    participant S as Service
-    participant D as Data
-    U->>UI: action
-    UI->>S: request
-    S->>D: save/load
-    D-->>S: result
-    S-->>UI: response
-    UI-->>U: confirmation
+    actor U as Candidate
+    participant UI as ResumeUploadView (Presentation)
+    participant S as ResumeAnalysisService (Service)
+    participant P as DocumentParser (Data)
+    participant Dom as ATSScorer (Domain)
+    participant AI as GeminiAIClient (Data)
+
+    U->>UI: Uploads Resume & pastes Job Desc
+    UI->>S: analyze(file, jobText)
+    
+    %% Downward dependency flow
+    S->>P: extractText(file)
+    P-->>S: rawText & sections
+    
+    S->>Dom: calculateOverlap(resume, jobText)
+    Dom-->>S: keywordScore & unquantifiedBullets
+    
+    S->>AI: generateRevisions(unquantifiedBullets, jobText)
+    AI-->>S: revisedBullets
+    
+    S-->>UI: analysisResults(score, revisions)
+    UI-->>U: Displays score & AI suggestions
 ```
 
 ## Architecture Decision Records
