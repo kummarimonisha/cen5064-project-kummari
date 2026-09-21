@@ -137,3 +137,7 @@ A one-line note per week keeps your commit story readable:
 
 - Week 1 (Aug 24): repo created, three ideas drafted
 - Week 2 (Aug 31): ...
+
+## Known Issues
+
+- Add issue 1: Setup PDF/DOCX Document Parsing endpoint
