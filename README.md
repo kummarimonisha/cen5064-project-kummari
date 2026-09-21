@@ -141,3 +141,4 @@ A one-line note per week keeps your commit story readable:
 ## Known Issues
 
 - Add issue 1: Setup PDF/DOCX Document Parsing endpoint
+- Add issue 2: Implement ATS Keyword Overlap Scoring
