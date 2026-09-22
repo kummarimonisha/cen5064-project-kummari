@@ -129,11 +129,22 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 
 | # | Decision | Status |
 |---|----------|--------|
-| [001](docs/adr/adr-001.md) | [What I am building and why] | [proposed] |
+| [001](docs/adr/adr-001.md) | [Build a Resume Analyzer using Deterministic Logic and Gemini 1.5 Pro] | [accepted] |
 
 ## Weekly log (optional but recommended)
 
 A one-line note per week keeps your commit story readable:
 
-- Week 1 (Aug 24): repo created, three ideas drafted
-- Week 2 (Aug 31): ...
+- Week 1 (Aug 24): repo created, project idea drafted
+- Week 2 (Aug 31): Tier breakdown mapped.  
+- Week 3 (Sep 7): C4 Context/Container rendered in Mermaid.
+- Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
+- Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
+- Week 6 (Sep 28): 
+- Week 7 (Oct 5):
+- Week 8 (Oct 12):
+- Week 9 (Oct 19):
+- Week 10 (Oct 26):
+- Week 11 (Nov 2):
+- Week 12 (Nov 9):
+- Week 13 (Nov 16):
