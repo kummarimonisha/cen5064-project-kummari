@@ -1,6 +1,6 @@
+import io
 import PyPDF2
 import docx
-import io
 
 def extract_text_from_file(filename: str, content: bytes) -> str:
     """Extracts text from PDF or DOCX files."""
