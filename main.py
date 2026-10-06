@@ -10,7 +10,6 @@ async def parse_resume(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only PDF or DOCX files are allowed.")
 
     content = await file.read()
-
     # Fix: Architecture blindness defect. Call the data tier, don't write logic here.
     extracted_text = extract_text_from_file(file.filename, content)
 
