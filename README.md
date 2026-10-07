@@ -27,10 +27,29 @@ Tech Stack:
 
 ## How to run
 
+Backend (Python 3.12, FastAPI). From a clean clone:
+
+```bash
+# 1. Create and activate a virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start the API
+uvicorn main:app --reload
 ```
-[Exact commands to build and run your system from a clean clone.
-Update this every time the steps change — your partner and your
-instructor will follow it literally on conference days.]
+
+Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
+Use the **POST `/api/upload`** endpoint to upload a `.pdf` or `.docx` resume;
+the response returns the locally extracted text. Unsupported or corrupt files
+return a `400` with an explanatory message.
+
+### Run the tests
+
+```bash
+pytest -q
 ```
 
 ## Architecture

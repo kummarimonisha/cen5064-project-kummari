@@ -1,0 +1,7 @@
+# Ruff configuration for the resume analyzer backend.
+
+[lint]
+# B008 flags function calls in argument defaults. In FastAPI, `File(...)`,
+# `Form(...)`, and `Depends(...)` in defaults are the required, idiomatic
+# way to declare request parameters — not a bug. Ignore that one rule.
+ignore = ["B008"]
