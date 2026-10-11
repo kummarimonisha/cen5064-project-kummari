@@ -16,7 +16,7 @@ async def parse_resume(file: UploadFile = File(...)):
 
     content = await file.read()
 
-    # Hand off to the Service tier; it orchestrates the Data tier parser.
+    # Hand off to the Service tier. It orchestrates the Data tier parser.
     try:
         extracted_text = service.extract_resume_text(file.filename, content)
     except DocumentParseError as exc:
