@@ -1,4 +1,4 @@
-#--- Python ---
+# --- Python ---
 __pycache__/
 *.pyc
 .venv/
@@ -7,15 +7,15 @@ venv/
 .ruff_cache/
 *.egg-info/
 
-#--- IDEs ---
+# --- IDEs ---
 .idea/
 .vscode/
 *.iml
 
-#--- OS noise ---
+# --- OS noise ---
 .DS_Store
 Thumbs.db
 
-#--- Local secrets/config (never commit credentials) ---
+# --- Local secrets/config (never commit credentials) ---
 .env
 *.local
