@@ -9,7 +9,7 @@ client = TestClient(app)
 
 
 def _make_docx_bytes(paragraphs: list[str]) -> bytes:
-    """Build a real, in-memory DOCX document for use as a mock upload."""
+    #Build a real, in-memory DOCX document for use as a mock upload.
     document = docx.Document()
     for text in paragraphs:
         document.add_paragraph(text)
