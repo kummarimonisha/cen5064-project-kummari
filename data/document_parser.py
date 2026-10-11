@@ -5,22 +5,14 @@ import PyPDF2
 
 
 class DocumentParseError(Exception):
-    """Raised when a document cannot be read or contains no extractable text.
-
-    Lives in the Data tier so the Service tier can translate it into an
-    appropriate response without knowing which parsing library failed.
-    """
-
+    #Raised when a document cannot be read or contains no extractable text.
+    #Lives in the Data tier so the Service tier can translate it into an appropriate response without knowing which parsing library failed.
 
 def extract_text_from_file(filename: str, content: bytes) -> str:
-    """Extract raw text locally from a PDF or DOCX file.
-
-    No external APIs are used — parsing happens entirely in-process.
-
-    Raises:
-        DocumentParseError: if the file is unsupported, corrupt, or has no
-            extractable text.
-    """
+    #Extract raw text locally from a PDF or DOCX file.
+    #No external APIs are used and parsing happens entirely in-process.
+    #Raises: DocumentParseError: if the file is unsupported, corrupt, or has no extractable text.
+    
     name = filename.lower()
 
     if name.endswith(".pdf"):
