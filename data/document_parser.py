@@ -3,6 +3,11 @@ import io
 import docx
 import PyPDF2
 
+# A newline character, defined once. We build it with chr(10) instead of the
+# escape sequence so that copy-pasting this file can never accidentally turn
+# the two characters backslash-n into a real line break inside a string.
+NEWLINE = chr(10)
+
 # Custom error type for the Data tier. Raised when a document cannot be read
 # or contains no extractable text. Keeping it here (rather than letting a raw
 # PyPDF2/docx exception escape) lets the Service tier react to one known error
@@ -47,8 +52,7 @@ def _extract_pdf(content: bytes) -> str:
             page_text = page.extract_text()
             if page_text:  # some pages (e.g. scanned images) yield no text
                 pages.append(page_text)
-        return "
-".join(pages)
+        return NEWLINE.join(pages)
     except DocumentParseError:
         # Already our own error type; let it propagate unchanged.
         raise
@@ -60,8 +64,7 @@ def _extract_docx(content: bytes) -> str:
     """Read every paragraph of a DOCX (given as raw bytes) and join the text."""
     try:
         doc = docx.Document(io.BytesIO(content))
-        return "
-".join(para.text for para in doc.paragraphs)
+        return NEWLINE.join(para.text for para in doc.paragraphs)
     except DocumentParseError:
         raise
     except Exception as exc:
