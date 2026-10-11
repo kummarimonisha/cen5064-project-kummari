@@ -3,10 +3,10 @@ import io
 import docx
 import PyPDF2
 
-""" Custom error type for the Data tier. 
-Raised when a document cannot be read or contains no extractable text. 
-Keeping it here (rather than letting a raw PyPDF2/docx exception escape) lets the Service tier react to one known error without knowing which parsing library was used underneath.
-"""
+# Custom error type for the Data tier. Raised when a document cannot be read
+# or contains no extractable text. Keeping it here (rather than letting a raw
+# PyPDF2/docx exception escape) lets the Service tier react to one known error
+# without knowing which parsing library was used underneath.
 class DocumentParseError(Exception):
     pass
 
