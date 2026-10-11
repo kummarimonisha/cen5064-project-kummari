@@ -159,8 +159,8 @@ A one-line note per week keeps your commit story readable:
 - Week 3 (Sep 7): C4 Context/Container rendered in Mermaid.
 - Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
 - Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
-- Week 6 (Sep 28): 
-- Week 7 (Oct 5):
+- Week 6 (Sep 28): Code for feature 1
+- Week 7 (Oct 5): Continue working on feature 1 and debugging
 - Week 8 (Oct 12):
 - Week 9 (Oct 19):
 - Week 10 (Oct 26):
