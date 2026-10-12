@@ -1,8 +1,7 @@
 # [AI-Powered Resume Optimizer & ATS Matcher]
 
-<!-- CI badge: after Session 4, replace ORG/REPO and the workflow filename, then uncomment:
-![CI](https://github.com/ORG/REPO/actions/workflows/ci.yml/badge.svg)
--->
+![CI](https://github.com/kummarimonisha/cen5064-project-kummari/actions/workflows/ci.yml/badge.svg)
+
 
 **Student:** [Monisha Kummari] · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** [@DavLien]
 
