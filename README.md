@@ -27,10 +27,29 @@ Tech Stack:
 
 ## How to run
 
+Backend (Python 3.12, FastAPI). From a clean clone:
+
+```bash
+# 1. Create and activate a virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start the API
+uvicorn main:app --reload
 ```
-[Exact commands to build and run your system from a clean clone.
-Update this every time the steps change — your partner and your
-instructor will follow it literally on conference days.]
+
+Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
+Use the **POST `/api/upload`** endpoint to upload a `.pdf` or `.docx` resume;
+the response returns the locally extracted text. Unsupported or corrupt files
+return a `400` with an explanatory message.
+
+### Run the tests
+
+```bash
+pytest -q
 ```
 
 ## Architecture
@@ -147,8 +166,8 @@ A one-line note per week keeps your commit story readable:
 - Week 3 (Sep 7): C4 Context/Container rendered in Mermaid.
 - Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
 - Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
-- Week 6 (Sep 28): 
-- Week 7 (Oct 5):
+- Week 6 (Sep 28): Code for feature 1
+- Week 7 (Oct 5): Continue working on feature 1 and debugging
 - Week 8 (Oct 12):
 - Week 9 (Oct 19):
 - Week 10 (Oct 26):
