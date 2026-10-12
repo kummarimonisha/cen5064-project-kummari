@@ -156,6 +156,7 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 | # | Decision | Status |
 |---|----------|--------|
 | [001](docs/adr/adr-001.md) | [Build a Resume Analyzer using Deterministic Logic and Gemini 1.5 Pro] | [accepted] |
+| [002](docs/adr/adr-002.md) | [Utilizing FastAPI Swagger UI for Initial Working Slice] | [accepted] |
 
 ## Weekly log (optional but recommended)
 
@@ -167,10 +168,19 @@ A one-line note per week keeps your commit story readable:
 - Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
 - Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
 - Week 6 (Sep 28): Code for feature 1
-- Week 7 (Oct 5): Continue working on feature 1 and debugging
-- Week 8 (Oct 12):
-- Week 9 (Oct 19):
-- Week 10 (Oct 26):
-- Week 11 (Nov 2):
-- Week 12 (Nov 9):
-- Week 13 (Nov 16):
+- Week 7 (Oct 5): Finish feature 1, added feature 2, and added ADR-002.
+
+  Planned: 
+- Week 8 (Oct 12): Wire Domain into the endpoint: connect ATSScorer + BulletPointAuditor into ResumeAnalysisService so /api/upload returns score + flagged bullets end-to-end
+- Week 9 (Oct 19): Issue #4: Gemini bullet refinement (GeminiAIClient in Data tier, called via Service)
+- Week 10 (Oct 26): ResumeRepository (SQLite behind an interface)	
+- Week 11 (Nov 2): Issue #5: Next.js frontend (ResumeUploadView, ScoreVisualizer)
+- Week 12 (Nov 9): Cover-letter generation (CoverLetterService) + polish
+- Week 13 (Nov 16): Hardening + final doc update: SOLID/pattern mapping, demo video
+
+## Known Issues
+
+- Add issue 1: Setup PDF/DOCX Document Parsing endpoint
+- Add issue 2: Implement ATS Keyword Overlap Scoring
+- Add issue 3: AI Bullet Point Refinement
+- Add issue 4: UI File Upload Visualization
