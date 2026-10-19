@@ -67,3 +67,24 @@ def test_all_bullets_quantified_returns_empty():
 def test_empty_bullet_list_returns_empty():
     auditor = BulletPointAuditor()
     assert auditor.flag_unquantified([]) == []
+
+# --------------------------------------------------------------------------
+# ATSScorer.score_text: end-to-end from job-description TEXT to a percentage
+# --------------------------------------------------------------------------
+
+def test_score_text_half_match():
+    # Job text yields exactly 4 keywords (python, fastapi, docker, kubernetes);
+    # the resume contains 2 of them -> 50.0%. Mirrors the professor's example.
+    scorer = ATSScorer()
+    resume = "Experienced developer skilled in Python and FastAPI."
+    job_text = "Python FastAPI Docker Kubernetes"
+    assert scorer.score_text(resume, job_text) == 50.0
+
+def test_extract_keywords_drops_stopwords_and_short_tokens():
+    scorer = ATSScorer()
+    keywords = scorer.extract_keywords("We will build the API with Python")
+    # "we", "will", "the", "with" are stopwords; single letters are dropped.
+    assert "python" in keywords
+    assert "api" in keywords
+    assert "the" not in keywords
+    assert "we" not in keywords
