@@ -162,17 +162,17 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 A one-line note per week keeps your commit story readable:
 
 - Week 1 (Aug 24): repo created, project idea drafted
-- Week 2 (Aug 31): Tier breakdown mapped.  
+- Week 2 (Aug 31): Tier breakdown mapped.
 - Week 3 (Sep 7): C4 Context/Container rendered in Mermaid.
 - Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
 - Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
 - Week 6 (Sep 28): Code for feature 1
 - Week 7 (Oct 5): Finish feature 1, added feature 2, and added ADR-002.
 
-  Planned: 
+  Planned:
 - Week 8 (Oct 12): Wire Domain into the endpoint: connect ATSScorer + BulletPointAuditor into ResumeAnalysisService so /api/upload returns score + flagged bullets end-to-end
 - Week 9 (Oct 19): Issue #4: Gemini bullet refinement (GeminiAIClient in Data tier, called via Service)
-- Week 10 (Oct 26): ResumeRepository (SQLite behind an interface)	
+- Week 10 (Oct 26): ResumeRepository (SQLite behind an interface)
 - Week 11 (Nov 2): Issue #5: Next.js frontend (ResumeUploadView, ScoreVisualizer)
 - Week 12 (Nov 9): Cover-letter generation (CoverLetterService) + polish
 - Week 13 (Nov 16): Hardening + final doc update: SOLID/pattern mapping, demo video
