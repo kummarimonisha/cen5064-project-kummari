@@ -1,5 +1,6 @@
 import re
 
+
 class BulletPointAuditor:
     """Domain tier: flags experience bullet points that lack quantified impact.
 
