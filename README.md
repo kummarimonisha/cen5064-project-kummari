@@ -1,8 +1,7 @@
 # [AI-Powered Resume Optimizer & ATS Matcher]
 
-<!-- CI badge: after Session 4, replace ORG/REPO and the workflow filename, then uncomment:
-![CI](https://github.com/ORG/REPO/actions/workflows/ci.yml/badge.svg)
--->
+![CI](https://github.com/kummarimonisha/cen5064-project-kummari/actions/workflows/ci.yml/badge.svg)
+
 
 **Student:** [Monisha Kummari] · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** [@DavLien]
 
@@ -27,22 +26,48 @@ Tech Stack:
 
 ## How to run
 
+Backend (Python 3.12, FastAPI). From a clean clone:
+
+```bash
+# 1. Create and activate a virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start the API
+uvicorn main:app --reload
 ```
-[Exact commands to build and run your system from a clean clone.
-Update this every time the steps change — your partner and your
-instructor will follow it literally on conference days.]
+
+Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
+Use the **POST `/api/upload`** endpoint to upload a `.pdf` or `.docx` resume;
+the response returns the locally extracted text. Unsupported or corrupt files
+return a `400` with an explanatory message.
+
+### Run the tests
+
+```bash
+pytest -q
 ```
 
 ## Architecture
 
 ### Tier breakdown (Session 2 studio)
 
-| Tier | Responsibilities in THIS system | Class 
-|------|--------------------------------|
-| Presentation | ResumeUploadView - Manages the drag-and-drop UI and client-side file validation. ScoreVisualizer - Renders the calculated ATS keyword overlap and audit results. JobDescriptionForm - Collects and sanitizes the target job posting text. |
-| Service | ResumeAnalysisService - Orchestrates the flow of parsing the resume, running domain audits, and returning the complete analysis. CoverLetterService - Coordinates passing parsed data and job requirements to the AI client to generate drafts.|
-| Domain | Resume - Represents the candidate's extracted data and guards its own state. ATSScorer - Calculates the deterministic keyword overlap percentage. BulletPointAuditor - Evaluates experience bullets to flag missing quantified metrics.|
-| Data | DocumentParser - Extracts raw text and structural sections from uploaded PDF/DOCX files. GeminiAIClient - Handles the direct HTTP network calls to Google AI Studio. ResumeRepository - Manages saving and loading analysis results to the database.|
+| Tier | Class | Responsibilities in THIS system |
+| :--- | :--- | :--- |
+| **Presentation** | `ResumeUploadView` | Manages the drag-and-drop UI and client-side file validation. |
+| | `ScoreVisualizer` | Renders the calculated ATS keyword overlap and audit results. |
+| | `JobDescriptionForm` | Collects and sanitizes the target job posting text. |
+| **Service** | `ResumeAnalysisService` | Orchestrates the flow of parsing the resume, running domain audits, and returning the complete analysis. |
+| | `CoverLetterService` | Coordinates passing parsed data and job requirements to the AI client to generate drafts. |
+| **Domain** | `Resume` | Represents the candidate's extracted data and guards its own state. |
+| | `ATSScorer` | Calculates the deterministic keyword overlap percentage. |
+| | `BulletPointAuditor` | Evaluates experience bullets to flag missing quantified metrics. |
+| **Data** | `DocumentParser` | Extracts raw text and structural sections from uploaded PDF/DOCX files. |
+| | `GeminiAIClient` | Handles the direct HTTP network calls to Google AI Studio. |
+| | `ResumeRepository` | Manages saving and loading analysis results to the database. |
 
 ### C4 — Context & Container (Session 3 studio)
 
@@ -129,16 +154,32 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 
 | # | Decision | Status |
 |---|----------|--------|
-| [001](docs/adr/adr-001.md) | [What I am building and why] | [proposed] |
+| [001](docs/adr/adr-001.md) | [Build a Resume Analyzer using Deterministic Logic and Gemini 1.5 Pro] | [accepted] |
+| [002](docs/adr/adr-002.md) | [Utilizing FastAPI Swagger UI for Initial Working Slice] | [accepted] |
 
 ## Weekly log (optional but recommended)
 
 A one-line note per week keeps your commit story readable:
 
-- Week 1 (Aug 24): repo created, three ideas drafted
-- Week 2 (Aug 31): ...
+- Week 1 (Aug 24): repo created, project idea drafted
+- Week 2 (Aug 31): Tier breakdown mapped.
+- Week 3 (Sep 7): C4 Context/Container rendered in Mermaid.
+- Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
+- Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
+- Week 6 (Sep 28): Code for feature 1
+- Week 7 (Oct 5): Finish feature 1, added feature 2, and added ADR-002.
+
+  Planned:
+- Week 8 (Oct 12): Wire Domain into the endpoint: connect ATSScorer + BulletPointAuditor into ResumeAnalysisService so /api/upload returns score + flagged bullets end-to-end
+- Week 9 (Oct 19): Issue #4: Gemini bullet refinement (GeminiAIClient in Data tier, called via Service)
+- Week 10 (Oct 26): ResumeRepository (SQLite behind an interface)
+- Week 11 (Nov 2): Issue #5: Next.js frontend (ResumeUploadView, ScoreVisualizer)
+- Week 12 (Nov 9): Cover-letter generation (CoverLetterService) + polish
+- Week 13 (Nov 16): Hardening + final doc update: SOLID/pattern mapping, demo video
 
 ## Known Issues
 
 - Add issue 1: Setup PDF/DOCX Document Parsing endpoint
 - Add issue 2: Implement ATS Keyword Overlap Scoring
+- Add issue 3: AI Bullet Point Refinement
+- Add issue 4: UI File Upload Visualization
