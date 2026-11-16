@@ -1,5 +1,8 @@
 import os
 
+# A newline, built with chr(10) instead of the escape sequence so copy-pasting
+# this file can never turn a backslash-n into a real line break inside a string.
+NL = chr(10)
 
 class AIClientError(Exception):
     """Raised when the AI service cannot be reached or returns nothing usable.
@@ -20,10 +23,10 @@ class GeminiAIClient:
         never hard-coded or committed (.env is git-ignored). If the key is
         missing, a call fails loudly rather than leaking or guessing.
       - The SDK client is created lazily (on first use), so merely importing
-        this module never requires a key. That keeps CI import-safe.
+        this module never requires a key. That keeps CI and tests import-safe.
     """
 
-    MODEL = "gemini-1.5-pro"
+    MODEL = "gemini-3.8-flash"
 
     def __init__(self, api_key: str | None = None, client=None):
         # Allow an explicit key or a pre-built client to be injected (tests pass
@@ -41,7 +44,7 @@ class GeminiAIClient:
                 "to call the AI service."
             )
         # Imported here (not at module top) so importing this module never
-        # requires the SDK to be configured — important for CI and tests.
+        # requires the SDK to be configured -- important for CI and tests.
         from google import genai
 
         self._client = genai.Client(api_key=self._api_key)
@@ -53,18 +56,22 @@ class GeminiAIClient:
         The prompt includes BOTH the flagged bullets and the target job
         requirements, so the rewrite is tailored to the role.
         """
-        bullets_block = "\n".join(f"- {b}" for b in flagged_bullets)
+        bullets_block = NL.join(f"- {b}" for b in flagged_bullets)
         keywords_block = ", ".join(job_keywords) if job_keywords else "(none provided)"
-        return (
+        parts = [
             "You are a resume-writing assistant. Rewrite each resume bullet "
             "point below so it is specific and quantified (include a concrete "
-            "metric or number), and tailor it to the target job requirements.\n\n"
-            f"Target job requirements (keywords): {keywords_block}\n\n"
-            "Bullet points to rewrite:\n"
-            f"{bullets_block}\n\n"
+            "metric or number), and tailor it to the target job requirements.",
+            "",
+            f"Target job requirements (keywords): {keywords_block}",
+            "",
+            "Bullet points to rewrite:",
+            bullets_block,
+            "",
             "Return exactly one rewritten bullet per line, in the same order, "
-            "with no numbering, blank lines, or extra commentary."
-        )
+            "with no numbering, blank lines, or extra commentary.",
+        ]
+        return NL.join(parts)
 
     def generate_revisions(
         self, flagged_bullets: list[str], job_keywords: list[str]

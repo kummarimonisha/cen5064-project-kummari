@@ -2,7 +2,6 @@ from data.document_parser import DocumentParseError, extract_text_from_file
 from domain.ats_scorer import ATSScorer
 from domain.bullet_point_auditor import BulletPointAuditor
 
-
 class ResumeAnalysisService:
     """Service tier: orchestrates resume analysis.
 
@@ -12,7 +11,7 @@ class ResumeAnalysisService:
       3. (Issue #3) ask the Domain auditor which bullets are unquantified and
          hand those to the Data tier AI client for rewriting.
     The Presentation tier calls this service and never touches the Data or
-    Domain tiers directly. The service holds no business rules itself — the
+    Domain tiers directly. The service holds no business rules itself -- the
     scoring/auditing math lives in the Domain tier and the AI call lives in the
     Data tier.
     """
@@ -25,7 +24,8 @@ class ResumeAnalysisService:
     ):
         # Dependencies default to real implementations but can be injected,
         # which is what the tests do (a fake scorer/auditor/AI client). This is
-        # the "depend on the abstraction" idea in miniature.
+        # the Dependency Inversion Principle in miniature: the service depends on
+        # abstractions passed in, not on concretes it builds itself.
         self._scorer = scorer or ATSScorer()
         self._auditor = auditor or BulletPointAuditor()
         # The AI client is injected only when the feature is used. We do NOT

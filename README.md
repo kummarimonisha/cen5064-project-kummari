@@ -1,14 +1,13 @@
-# [AI-Powered Resume Optimizer & ATS Matcher]
+# AI-Powered Resume Optimizer & ATS Matcher
 
 ![CI](https://github.com/kummarimonisha/cen5064-project-kummari/actions/workflows/ci.yml/badge.svg)
 
 
-**Student:** [Monisha Kummari] · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** [@DavLien]
+**Student:** Monisha Kummari · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** @DavLien
 
-## Project (approval paragraph — write this by Sun Aug 30)
+## Project Description
 
-[One paragraph: What is the system? Who is it for? What are its 3–4 core features?
-This paragraph is your approval request — see the Project Brief, Section 2.]
+[One paragraph: What is the system? Who is it for? What are its 3–4 core features?]
 
 An interactive full-stack web application designed to evaluate and optimize candidate resumes against specific job descriptions. Users upload a resume (PDF/DOCX) and paste a target job posting to receive immediate analysis and AI-assisted improvements. Rather than relying solely on external API calls, the system executes custom, deterministic domain logic such as calculating rule-based keyword match percentages, enforcing section structure validations, and flagging unquantified bullet points before invoking AI. Gemini 1.5 Pro is used directly via Google AI Studio as the single external AI service to generate section bullet revisions and tailored cover letter drafts grounded in the candidate's background. 
 
@@ -156,6 +155,8 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 |---|----------|--------|
 | [001](docs/adr/adr-001.md) | [Build a Resume Analyzer using Deterministic Logic and Gemini 1.5 Pro] | [accepted] |
 | [002](docs/adr/adr-002.md) | [Utilizing FastAPI Swagger UI for Initial Working Slice] | [accepted] |
+| [003](docs/adr/adr-003.md) | Protect the AI feature with a shared access token and env-var secrets | [accepted] |
+
 
 ## Weekly log (optional but recommended)
 
@@ -168,13 +169,11 @@ A one-line note per week keeps your commit story readable:
 - Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
 - Week 6 (Sep 28): Code for feature 1
 - Week 7 (Oct 5): Finish feature 1, added feature 2, and added ADR-002.
-
-  Planned:
 - Week 8 (Oct 12): Wire Domain into the endpoint: connect ATSScorer + BulletPointAuditor into ResumeAnalysisService so /api/upload returns score + flagged bullets end-to-end
-- Week 9 (Oct 19): Issue #4: Gemini bullet refinement (GeminiAIClient in Data tier, called via Service)
+- Week 9 (Oct 19): Issue #3: Gemini bullet refinement (GeminiAIClient in the Data tier, /api/refine endpoint)
 - Week 10 (Oct 26): ResumeRepository (SQLite behind an interface)
 - Week 11 (Nov 2): Issue #5: Next.js frontend (ResumeUploadView, ScoreVisualizer)
-- Week 12 (Nov 9): Cover-letter generation (CoverLetterService) + polish
+- Week 12 (Nov 9): Cover-letter generation (CoverLetterService) + added ADR-003
 - Week 13 (Nov 16): Hardening + final doc update: SOLID/pattern mapping, demo video
 
 ## Known Issues

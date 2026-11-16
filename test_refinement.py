@@ -1,15 +1,23 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+from fastapi.testclient import TestClient
 
 from data.gemini_ai_client import AIClientError, GeminiAIClient
+from main import app
 from service.resume_analysis_service import ResumeAnalysisService
+
+client = TestClient(app)
+
+# A newline built with chr(10) so pasting this file can never split a string.
+NL = chr(10)
 
 # --------------------------------------------------------------------------
 # GeminiAIClient: prompt building + response parsing (API fully mocked)
 # --------------------------------------------------------------------------
 
 def test_prompt_includes_bullets_and_job_keywords():
-    client = GeminiAIClient(api_key="test-key")
-    prompt = client.build_prompt(
+    ai = GeminiAIClient(api_key="test-key")
+    prompt = ai.build_prompt(
         flagged_bullets=["Led the backend team"],
         job_keywords=["python", "fastapi"],
     )
@@ -21,24 +29,23 @@ def test_prompt_includes_bullets_and_job_keywords():
 def test_generate_revisions_parses_mocked_response():
     # Build a fake SDK client so NO real network call happens.
     fake_response = MagicMock()
-    fake_response.text = "Rewrote bullet one with 30% impact\nRewrote bullet two"
+    fake_response.text = "Rewrote bullet one with 30% impact" + NL + "Rewrote bullet two"
     fake_sdk = MagicMock()
     fake_sdk.models.generate_content.return_value = fake_response
 
-    client = GeminiAIClient(client=fake_sdk)
-    revisions = client.generate_revisions(
+    ai = GeminiAIClient(client=fake_sdk)
+    revisions = ai.generate_revisions(
         flagged_bullets=["bullet one", "bullet two"],
         job_keywords=["python"],
     )
 
     assert revisions == ["Rewrote bullet one with 30% impact", "Rewrote bullet two"]
-    # Confirm the model was actually invoked once.
     fake_sdk.models.generate_content.assert_called_once()
 
 def test_generate_revisions_empty_bullets_makes_no_call():
     fake_sdk = MagicMock()
-    client = GeminiAIClient(client=fake_sdk)
-    assert client.generate_revisions([], ["python"]) == []
+    ai = GeminiAIClient(client=fake_sdk)
+    assert ai.generate_revisions([], ["python"]) == []
     fake_sdk.models.generate_content.assert_not_called()
 
 def test_generate_revisions_raises_on_empty_response():
@@ -47,9 +54,9 @@ def test_generate_revisions_raises_on_empty_response():
     fake_sdk = MagicMock()
     fake_sdk.models.generate_content.return_value = fake_response
 
-    client = GeminiAIClient(client=fake_sdk)
+    ai = GeminiAIClient(client=fake_sdk)
     try:
-        client.generate_revisions(["a bullet"], ["python"])
+        ai.generate_revisions(["a bullet"], ["python"])
         raise AssertionError("expected AIClientError")
     except AIClientError:
         pass
@@ -59,7 +66,6 @@ def test_generate_revisions_raises_on_empty_response():
 # --------------------------------------------------------------------------
 
 def test_service_refines_only_unquantified_bullets():
-    # The AI client is a mock that echoes a fixed revision list.
     fake_ai = MagicMock()
     fake_ai.generate_revisions.return_value = ["Led the backend team of 8 engineers"]
 
@@ -71,7 +77,6 @@ def test_service_refines_only_unquantified_bullets():
     result = service.refine_bullets(bullets, job_text="Python backend engineer")
 
     assert result == ["Led the backend team of 8 engineers"]
-    # The service must send ONLY the flagged (unquantified) bullet to the AI.
     sent_bullets, _sent_keywords = fake_ai.generate_revisions.call_args.args
     assert sent_bullets == ["Led the backend team"]
 
@@ -89,3 +94,49 @@ def test_service_without_ai_client_raises():
         raise AssertionError("expected RuntimeError")
     except RuntimeError:
         pass
+
+# --------------------------------------------------------------------------
+# /api/refine endpoint: the access-token gate (AI fully mocked)
+# --------------------------------------------------------------------------
+
+def test_refine_endpoint_rejects_missing_token():
+    # Server HAS a token configured, but the request sends none -> 403, no call.
+    with patch("main.get_ai_access_token", return_value="secret"):
+        response = client.post("/api/refine", json={"bullets": ["Led the team"]})
+    assert response.status_code == 403
+
+def test_refine_endpoint_rejects_wrong_token():
+    with patch("main.get_ai_access_token", return_value="secret"):
+        response = client.post(
+            "/api/refine",
+            json={"bullets": ["Led the team"]},
+            headers={"X-AI-Token": "wrong"},
+        )
+    assert response.status_code == 403
+
+def test_refine_endpoint_disabled_when_no_token_configured():
+    # Server has NO token set -> AI is closed to everyone (fail safe).
+    with patch("main.get_ai_access_token", return_value=None):
+        response = client.post(
+            "/api/refine",
+            json={"bullets": ["Led the team"]},
+            headers={"X-AI-Token": "anything"},
+        )
+    assert response.status_code == 503
+
+def test_refine_endpoint_allows_valid_token_and_returns_revisions():
+    # Correct token -> the request is allowed. The Gemini client is mocked, so
+    # no real network call happens and no API key is needed.
+    fake_ai = MagicMock()
+    fake_ai.generate_revisions.return_value = ["Led a 6-person backend team"]
+
+    with patch("main.get_ai_access_token", return_value="secret"), \
+         patch("main.GeminiAIClient", return_value=fake_ai):
+        response = client.post(
+            "/api/refine",
+            json={"bullets": ["Led the backend team"], "job_description": "python"},
+            headers={"X-AI-Token": "secret"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"revisions": ["Led a 6-person backend team"]}

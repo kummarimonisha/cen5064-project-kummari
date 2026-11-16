@@ -4,5 +4,6 @@ python-multipart
 PyPDF2
 python-docx
 google-genai
+python-dotenv
 pytest
 httpx
