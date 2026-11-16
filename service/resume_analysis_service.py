@@ -2,6 +2,7 @@ from data.document_parser import DocumentParseError, extract_text_from_file
 from domain.ats_scorer import ATSScorer
 from domain.bullet_point_auditor import BulletPointAuditor
 
+
 class ResumeAnalysisService:
     """Service tier: orchestrates resume analysis.
 

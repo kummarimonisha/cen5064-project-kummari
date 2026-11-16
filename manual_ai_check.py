@@ -14,6 +14,7 @@ It makes a real API call and spends a small amount of your Gemini quota.
 from config import get_gemini_api_key
 from data.gemini_ai_client import AIClientError, GeminiAIClient
 
+
 def main() -> None:
     if not get_gemini_api_key():
         print("GEMINI_API_KEY is not set. Add it to a .env file first.")
@@ -27,7 +28,7 @@ def main() -> None:
     job_keywords = ["python", "fastapi", "aws"]
 
     print("Calling Gemini model " + ai.MODEL + " ...")
-    print("")
+    print()
     try:
         revisions = ai.generate_revisions(bullets, job_keywords)
     except AIClientError as exc:

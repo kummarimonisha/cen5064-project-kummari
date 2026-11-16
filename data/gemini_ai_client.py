@@ -26,7 +26,7 @@ class GeminiAIClient:
         this module never requires a key. That keeps CI and tests import-safe.
     """
 
-    MODEL = "gemini-3.8-flash"
+    MODEL = "gemini-2.5-flash"
 
     def __init__(self, api_key: str | None = None, client=None):
         # Allow an explicit key or a pre-built client to be injected (tests pass
@@ -58,18 +58,24 @@ class GeminiAIClient:
         """
         bullets_block = NL.join(f"- {b}" for b in flagged_bullets)
         keywords_block = ", ".join(job_keywords) if job_keywords else "(none provided)"
+        intro = (
+            "You are a resume-writing assistant. Rewrite each resume bullet point "
+            "below so it is specific and quantified (include a concrete metric or "
+            "number), and tailor it to the target job requirements."
+        )
+        closing = (
+            "Return exactly one rewritten bullet per line, in the same order, "
+            "with no numbering, blank lines, or extra commentary."
+        )
         parts = [
-            "You are a resume-writing assistant. Rewrite each resume bullet "
-            "point below so it is specific and quantified (include a concrete "
-            "metric or number), and tailor it to the target job requirements.",
+            intro,
             "",
             f"Target job requirements (keywords): {keywords_block}",
             "",
             "Bullet points to rewrite:",
             bullets_block,
             "",
-            "Return exactly one rewritten bullet per line, in the same order, "
-            "with no numbering, blank lines, or extra commentary.",
+            closing,
         ]
         return NL.join(parts)
 
@@ -96,7 +102,10 @@ class GeminiAIClient:
                 contents=prompt,
             )
         except Exception as exc:
-            raise AIClientError("The AI service call failed.") from exc
+            # Surface the underlying provider message so failures are
+            # diagnosable (e.g. invalid key, model not found, quota). The key
+            # itself is never part of these messages, so this does not leak it.
+            raise AIClientError(f"The AI service call failed: {exc}") from exc
 
         text = getattr(response, "text", None)
         if not text:
