@@ -84,7 +84,7 @@ export default function Home() {
     // Abort the request if it takes longer than 40 seconds so the UI shows a
     // clear message instead of spinning on "Rewriting..." forever.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 40000);
+    const timer = setTimeout(() => controller.abort(), 75000);
     try {
       const res = await fetch(`${API_BASE}/api/refine`, {
         method: "POST",
