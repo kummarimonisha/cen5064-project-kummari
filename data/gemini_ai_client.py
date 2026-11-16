@@ -26,7 +26,7 @@ class GeminiAIClient:
         this module never requires a key. That keeps CI and tests import-safe.
     """
 
-    MODEL = "gemini-2.5-flash"
+    MODEL = "models/gemini-3.8-flash"
 
     def __init__(self, api_key: str | None = None, client=None):
         # Allow an explicit key or a pre-built client to be injected (tests pass
