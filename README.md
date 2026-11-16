@@ -75,7 +75,7 @@ never be committed) and set:
 
 ```
 GEMINI_API_KEY=your-gemini-api-key-here     # from https://aistudio.google.com
-AI_ACCESS_TOKEN=your-chosen-secret-token     # any long random string you pick
+AI_ACCESS_TOKEN=secret-token
 ```
 
 - The free features (upload, parse, ATS score) work with no key and no token.
