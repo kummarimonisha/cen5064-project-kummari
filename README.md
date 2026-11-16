@@ -48,7 +48,9 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload
 ```
 
-The API runs on <http://127.0.0.1:8000> (Swagger docs at `/docs`).
+The API runs on <http://127.0.0.1:8000>. (Auto-generated API docs are available
+at `/docs` as a developer aid; the actual user interface is the Next.js app in
+step 2.)
 
 ### 2. Frontend (Next.js)
 
@@ -200,7 +202,7 @@ Decisions live in [`docs/adr/`](docs/adr/). Creational-pattern map:
 | # | Decision | Status |
 |---|----------|--------|
 | [001](docs/adr/adr-001.md) | Build a Resume Analyzer using deterministic logic and Google Gemini | accepted |
-| [002](docs/adr/adr-002.md) | Use the FastAPI Swagger UI for the initial working slice | accepted |
+| [002](docs/adr/adr-002.md) | Use the FastAPI Swagger UI for the initial working slice | superseded by Next.js frontend |
 | [003](docs/adr/adr-003.md) | Protect the AI feature with a shared access token and env-var secrets | accepted |
 
 ## Weekly log
