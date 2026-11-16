@@ -76,7 +76,12 @@ def test_service_refines_only_unquantified_bullets():
     ]
     result = service.refine_bullets(bullets, job_text="Python backend engineer")
 
-    assert result == ["Led the backend team of 8 engineers"]
+    assert result == [
+        {
+            "before": "Led the backend team",
+            "after": "Led the backend team of 8 engineers",
+        }
+    ]
     sent_bullets, _sent_keywords = fake_ai.generate_revisions.call_args.args
     assert sent_bullets == ["Led the backend team"]
 
@@ -139,4 +144,11 @@ def test_refine_endpoint_allows_valid_token_and_returns_revisions():
         )
 
     assert response.status_code == 200
-    assert response.json() == {"revisions": ["Led a 6-person backend team"]}
+    assert response.json() == {
+        "revisions": [
+            {
+                "before": "Led the backend team",
+                "after": "Led a 6-person backend team",
+            }
+        ]
+    }

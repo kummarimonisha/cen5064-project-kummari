@@ -1,4 +1,5 @@
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from config import get_ai_access_token, get_gemini_api_key
@@ -6,6 +7,15 @@ from data.gemini_ai_client import AIClientError, GeminiAIClient
 from service.resume_analysis_service import DocumentParseError, ResumeAnalysisService
 
 app = FastAPI(title="AI-Powered Resume Optimizer & ATS Matcher")
+
+# Allow the Next.js dev server (localhost:3000) to call this API from the
+# browser. In production this list would be the real frontend origin.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # The default service handles the free, local features (parse + score). It has
 # no AI client, so it can never make a paid call by accident.
@@ -23,8 +33,8 @@ async def analyze_resume(
 
     content = await file.read()
 
-    # Hand off to the Service tier. It orchestrates the Data tier parser and the
-    # Domain tier scorer so one request goes from upload all the way to a score.
+    # Hand off to the Service tier. It orchestrates the Data parser and the
+    # Domain scorer so one request goes from upload all the way to a report.
     try:
         result = service.analyze(file.filename, content, job_description)
     except DocumentParseError as exc:
@@ -34,6 +44,8 @@ async def analyze_resume(
         "filename": file.filename,
         "extracted_text": result["extracted_text"],
         "ats_score": result["ats_score"],
+        "matched_keywords": result["matched_keywords"],
+        "missing_keywords": result["missing_keywords"],
     }
 
 class RefineRequest(BaseModel):
@@ -51,7 +63,6 @@ def _require_ai_access(x_ai_token: str | None) -> None:
     """
     expected = get_ai_access_token()
     if not expected:
-        # No token configured on the server -> AI is disabled for everyone.
         raise HTTPException(
             status_code=503,
             detail="AI features are not enabled on this server.",

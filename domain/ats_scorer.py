@@ -1,78 +1,114 @@
 import re
 
-# Very common words that carry no signal as "keywords". Filtered out so the
-# score reflects real skills/terms, not filler like "the" or "and".
-_STOPWORDS = {
-    "the", "and", "for", "with", "you", "our", "are", "that", "this", "will",
-    "have", "has", "a", "an", "to", "of", "in", "on", "or", "is", "be", "as",
-    "we", "at", "by", "it", "your",
+# Curated dictionary of real ATS keywords: technologies, languages, tools, and
+# professional practices an applicant-tracking system actually looks for. The
+# scorer only considers these -- not every word in the posting -- so the score
+# reflects meaningful skills (tech stack, methodologies), like a real ATS.
+#
+# Multi-word phrases ("data structures", "machine learning") are supported and
+# counted as a single keyword. Add new terms here as the domain grows; this is
+# the one place keyword knowledge lives.
+_KNOWN_SKILLS = {
+    # languages
+    "python", "java", "javascript", "typescript", "c++", "c#", "c", "go",
+    "golang", "ruby", "rust", "kotlin", "swift", "scala", "php", "r", "ocaml",
+    "sql", "html", "css", "bash", "matlab",
+    # frameworks / libraries
+    "react", "angular", "vue", "next.js", "node.js", "node", "express",
+    "django", "flask", "fastapi", "spring", "spring boot", ".net", "rails",
+    "ruby on rails", "jquery", "pandas", "numpy", "tensorflow", "pytorch",
+    "scikit-learn",
+    # data / databases
+    "postgresql", "postgres", "mysql", "sqlite", "mongodb", "redis",
+    "data structures", "data modeling", "data analysis", "databases",
+    "etl", "data pipelines", "big data", "spark", "hadoop",
+    # cloud / devops / tools
+    "aws", "azure", "gcp", "google cloud", "docker", "kubernetes", "terraform",
+    "git", "github", "gitlab", "ci/cd", "jenkins", "linux", "rest", "rest api",
+    "graphql", "microservices", "api", "apis", "firebase",
+    # practices / methodologies / concepts
+    "agile", "scrum", "kanban", "tdd", "test driven development", "unit testing",
+    "oop", "object oriented", "machine learning", "deep learning",
+    "distributed systems", "algorithms", "version control", "code review",
+    "design patterns",
+    # domains
+    "gaming", "cybersecurity", "security", "frontend", "backend", "full stack",
+    "mobile", "android", "ios",
 }
 
-# A "word" is a run of letters/digits/+/#, so terms like "c++" and "c#" survive.
-_WORD_PATTERN = re.compile(r"[a-zA-Z0-9+#]+")
+def _word_regex(skill: str) -> re.Pattern:
+    """Compile a whole-word, case-insensitive regex for a skill phrase.
+
+    Whole-word matching means "java" does NOT match inside "javascript", and
+    multi-word phrases match as a unit. Special characters in a skill (like the
+    + in c++) are escaped. The boundaries are letters/digits/+/# only -- NOT
+    the period -- so a skill at the end of a sentence ("Python.") still matches
+    while "javascript" still does not count as "java".
+    """
+    escaped = re.escape(skill)
+    return re.compile(rf"(?<![a-zA-Z0-9+#]){escaped}(?![a-zA-Z0-9+#])", re.IGNORECASE)
+
+# Pre-compile every skill's matcher once (keyword -> compiled regex).
+_SKILL_REGEX = {skill: _word_regex(skill) for skill in _KNOWN_SKILLS}
 
 class ATSScorer:
-    """Domain tier: deterministic ATS keyword-overlap scoring.
+    """Domain tier: deterministic ATS keyword scoring against a curated skill set.
 
-    This is a pure business rule. It knows nothing about FastAPI, uploaded
-    files, or the database. It takes plain text / plain Python data and returns
-    a calculated number.
-
-    The score answers one question: "What percentage of the job's required
-    keywords does the resume actually contain?"
+    A pure business rule: no FastAPI, no files, no network. It identifies which
+    KNOWN skills a job description asks for, then checks which of those appear
+    in the resume, and reports a match percentage plus the matched/missing lists.
     """
 
     def extract_keywords(self, job_text: str) -> list[str]:
-        """Turn raw job-description text into a list of candidate keywords.
+        """Return the known skills that appear in the job-description text.
 
-        Lower-cases the text, splits it into words, drops common stopwords and
-        single-character tokens. Deterministic: the same text always yields the
-        same keywords.
+        Only curated skills are considered, so the result is the real "required
+        keywords" (tech stack, practices) -- not every word in the posting.
+        Sorted for a stable, readable order.
         """
-        words = _WORD_PATTERN.findall(job_text.lower())
-        return [w for w in words if len(w) > 1 and w not in _STOPWORDS]
+        return sorted(
+            skill for skill, pattern in _SKILL_REGEX.items() if pattern.search(job_text)
+        )
 
-    def score_text(self, resume_text: str, job_text: str) -> float:
-        """Score a resume against raw job-description TEXT.
+    def _skills_in(self, text: str) -> set:
+        """Return the set of known skills present in the given text."""
+        return {skill for skill, pattern in _SKILL_REGEX.items() if pattern.search(text)}
 
-        This is the end-to-end entry point the Service tier uses: it extracts
-        the job's keywords from the text, then measures overlap. Given a resume
-        and a job description, it returns the match percentage.
+    def score_report(self, resume_text: str, job_text: str) -> dict:
+        """Full report: score plus which required skills matched or are missing.
+
+        required = known skills mentioned in the job description
+        matched  = required skills that also appear in the resume
+        missing  = required skills absent from the resume
+        score    = matched / required * 100
         """
-        job_keywords = self.extract_keywords(job_text)
-        return self.calculate_overlap(resume_text, job_keywords)
+        required = set(self.extract_keywords(job_text))
+        if not required:
+            return {"score": 0.0, "matched_keywords": [], "missing_keywords": []}
 
-    def calculate_overlap(self, resume_text: str, job_keywords: list[str]) -> float:
-        """Return the keyword overlap as a percentage (0.0 - 100.0).
+        resume_skills = self._skills_in(resume_text)
+        matched = sorted(required & resume_skills)
+        missing = sorted(required - resume_skills)
+        score = round((len(matched) / len(required)) * 100, 2)
 
-        Formula:
-            (matched unique job keywords / total unique job keywords) * 100
-
-        Args:
-            resume_text: the full parsed resume text.
-            job_keywords: the keywords extracted from the job description.
-                Duplicates are allowed in the input; they are de-duplicated
-                here so a single keyword can never be counted twice.
-
-        Returns:
-            The overlap percentage, rounded to two decimal places. Returns 0.0
-            when the job has no keywords (nothing to match against).
-        """
-        # De-duplicate the job keywords so each required keyword counts once.
-        # Lower-casing makes the match case-insensitive ("Python" == "python").
-        unique_job_keywords = {keyword.lower() for keyword in job_keywords}
-
-        # Guard against division by zero: no required keywords means no score.
-        if not unique_job_keywords:
-            return 0.0
-
-        # Lower-case the resume text once so matching is case-insensitive.
-        resume_lower = resume_text.lower()
-
-        # Count how many of the required keywords appear in the resume.
-        matched = {
-            keyword for keyword in unique_job_keywords if keyword in resume_lower
+        return {
+            "score": score,
+            "matched_keywords": matched,
+            "missing_keywords": missing,
         }
 
-        overlap = (len(matched) / len(unique_job_keywords)) * 100
-        return round(overlap, 2)
+    def score_text(self, resume_text: str, job_text: str) -> float:
+        """Convenience entry point: return just the match percentage."""
+        return self.score_report(resume_text, job_text)["score"]
+
+    def calculate_overlap(self, resume_text: str, job_keywords: list[str]) -> float:
+        """Return the overlap percentage for an explicit list of keywords.
+
+        Kept for callers that already have a keyword list. De-duplicates the
+        keywords and uses whole-word matching against the resume.
+        """
+        unique = {k.lower() for k in job_keywords}
+        if not unique:
+            return 0.0
+        matched = sum(1 for k in unique if _word_regex(k).search(resume_text))
+        return round((matched / len(unique)) * 100, 2)
