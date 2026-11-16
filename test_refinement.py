@@ -48,7 +48,10 @@ def test_generate_revisions_empty_bullets_makes_no_call():
     assert ai.generate_revisions([], ["python"]) == []
     fake_sdk.models.generate_content.assert_not_called()
 
-def test_generate_revisions_raises_on_empty_response():
+@patch("data.gemini_ai_client.time.sleep", lambda *_a, **_k: None)
+def test_generate_revisions_raises_when_all_models_fail():
+    # Every model returns empty text -> after exhausting all models/retries,
+    # the client raises. time.sleep is patched so retries are instant.
     fake_response = MagicMock()
     fake_response.text = ""
     fake_sdk = MagicMock()
@@ -60,6 +63,24 @@ def test_generate_revisions_raises_on_empty_response():
         raise AssertionError("expected AIClientError")
     except AIClientError:
         pass
+
+
+@patch("data.gemini_ai_client.time.sleep", lambda *_a, **_k: None)
+def test_generate_revisions_falls_back_to_next_model():
+    # First call (first model) raises "high demand"; the retry on the SAME model
+    # also raises; the SECOND model succeeds. The feature should still work.
+    good = MagicMock()
+    good.text = "Rewritten bullet with 20% improvement"
+    fake_sdk = MagicMock()
+    fake_sdk.models.generate_content.side_effect = [
+        Exception("503 UNAVAILABLE high demand"),
+        Exception("503 UNAVAILABLE high demand"),
+        good,  # third attempt (second model) succeeds
+    ]
+
+    ai = GeminiAIClient(client=fake_sdk)
+    result = ai.generate_revisions(["a bullet"], ["python"])
+    assert result == ["Rewritten bullet with 20% improvement"]
 
 # --------------------------------------------------------------------------
 # ResumeAnalysisService.refine_bullets: orchestration (AI client mocked)
