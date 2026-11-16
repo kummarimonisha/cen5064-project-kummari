@@ -1,0 +1,24 @@
+Software Engineer (Entry Level)
+
+About the role:
+We are hiring an entry-level Software Engineer to help build and maintain our
+web applications. You will work across the stack, collaborate with a small
+team, and ship features used by thousands of customers.
+
+Responsibilities:
+- Develop and maintain web applications using JavaScript, HTML, and CSS
+- Write backend services in Python and Java
+- Work with SQL databases to store and query application data
+- Use Git for version control and participate in code reviews
+- Apply agile practices and strong data structures fundamentals
+
+Required skills:
+- Programming experience in Python, Java, and JavaScript
+- Familiarity with SQL and relational databases
+- Experience using Git and REST APIs
+- Understanding of data structures and algorithms
+
+Nice to have:
+- Experience with React
+- Familiarity with Docker and Kubernetes
+- Exposure to AWS or other cloud platforms
