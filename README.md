@@ -9,18 +9,18 @@
 
 [One paragraph: What is the system? Who is it for? What are its 3–4 core features?]
 
-An interactive full-stack web application designed to evaluate and optimize candidate resumes against specific job descriptions. Users upload a resume (PDF/DOCX) and paste a target job posting to receive immediate analysis and AI-assisted improvements. Rather than relying solely on external API calls, the system executes custom, deterministic domain logic such as calculating rule-based keyword match percentages, enforcing section structure validations, and flagging unquantified bullet points before invoking AI. Gemini 1.5 Pro is used directly via Google AI Studio as the single external AI service to generate section bullet revisions and tailored cover letter drafts grounded in the candidate's background. 
+An interactive full-stack web application designed to evaluate and optimize candidate resumes against specific job descriptions. Users upload a resume (PDF/DOCX) and paste a target job posting to receive immediate analysis and AI-assisted improvements. Rather than relying solely on external API calls, the system executes custom, deterministic domain logic such as calculating rule-based keyword match percentages, enforcing section structure validations, and flagging unquantified bullet points before invoking AI. Google's Gemini (model models/gemini-3.8-flash) is used directly via Google AI Studio as the single external AI service to generate section bullet revisions and tailored cover letter drafts grounded in the candidate's background. 
 
 Core Features: 
 1. Automated Document Parsing & Visualizer: Extracts raw text and structural sections (Education, Experience, Skills) locally from uploaded PDF/DOCX files and displays a side-by-side parsed preview.
 2. Deterministic Resume Audit & ATS Keyword Analysis: Evaluates resumes using custom internal domain rules—calculating exact keyword overlap scores, flagging bullet points missing quantified metrics, and identifying structural format gaps without needing external APIs.
-3. AI Bullet Point Refinement: Direct API integration with Gemini 1.5 Pro to suggest high-impact, quantified bullet point rewrites specifically tailored to key job requirements.
+3. AI Bullet Point Refinement: Direct API integration with Google Gemini to suggest high-impact, quantified bullet point rewrites specifically tailored to key job requirements.
 4. Tailored Draft Generation: Generates customized cover letter drafts grounded in the candidate’s extracted experience and target job requirements. 
 
 Tech Stack: 
 1. Frontend: React / Next.js (Simple UI with file drag-and-drop & score visualizer)
 2. Backend: Python (FastAPI / Flask) running lightweight synchronous processing
-3. AI Integration: Google AI Studio (Gemini 1.5 Pro direct API call single external service)
+3. AI Integration: Google AI Studio (Gemini, model models/gemini-3.8-flash; single external service)
 4. Database: PostgreSQL (or SQLite for simple local development)
 
 ## How to run
@@ -153,7 +153,7 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 
 | # | Decision | Status |
 |---|----------|--------|
-| [001](docs/adr/adr-001.md) | [Build a Resume Analyzer using Deterministic Logic and Gemini 1.5 Pro] | [accepted] |
+| [001](docs/adr/adr-001.md) | Build a Resume Analyzer using deterministic logic and Google Gemini | accepted |
 | [002](docs/adr/adr-002.md) | [Utilizing FastAPI Swagger UI for Initial Working Slice] | [accepted] |
 | [003](docs/adr/adr-003.md) | Protect the AI feature with a shared access token and env-var secrets | [accepted] |
 
