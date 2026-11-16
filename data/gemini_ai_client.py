@@ -97,9 +97,17 @@ class GeminiAIClient:
         client = self._get_client()
 
         try:
+            # Cap the call at 30 seconds so a slow/stalled request fails with a
+            # clear error instead of hanging the UI forever. http_options takes
+            # the timeout in milliseconds.
+            from google.genai import types
+
             response = client.models.generate_content(
                 model=self.MODEL,
                 contents=prompt,
+                config=types.GenerateContentConfig(
+                    http_options=types.HttpOptions(timeout=30_000)
+                ),
             )
         except Exception as exc:
             # Surface the underlying provider message so failures are

@@ -81,11 +81,16 @@ export default function Home() {
       return;
     }
     setLoadingRefine(true);
+    // Abort the request if it takes longer than 40 seconds so the UI shows a
+    // clear message instead of spinning on "Rewriting..." forever.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 40000);
     try {
       const res = await fetch(`${API_BASE}/api/refine`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-AI-Token": aiToken },
         body: JSON.stringify({ bullets: list, job_description: jobDescription }),
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) {
@@ -94,8 +99,13 @@ export default function Home() {
         setRevisions(data.revisions);
       }
     } catch (err) {
-      setError("Could not reach the backend. Is it running on port 8000?");
+      if (err.name === "AbortError") {
+        setError("The AI took too long to respond. Please try again.");
+      } else {
+        setError("Could not reach the backend. Is it running on port 8000?");
+      }
     } finally {
+      clearTimeout(timer);
       setLoadingRefine(false);
     }
   }
