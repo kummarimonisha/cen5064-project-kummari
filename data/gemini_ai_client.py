@@ -37,10 +37,17 @@ class GeminiAIClient:
     # These are the free-tier text models observed on the project's key; the
     # list is easy to reorder or extend.
     MODELS = (
-        "models/gemini-3.8-flash",
-        "models/gemini-3.6-flash",
+        # "lite" models first -- they are faster and far less likely to hit the
+        # free tier's "high demand" throttling. Then the standard flash models.
+        # Every name here was confirmed available on the project's API key.
         "models/gemini-3.1-flash-lite",
         "models/gemini-3.5-flash-lite",
+        "models/gemini-2.5-flash-lite",
+        "models/gemini-3.5-flash",
+        "models/gemini-3.6-flash",
+        "models/gemini-3.7-flash",
+        "models/gemini-3.8-flash",
+        "models/gemini-2.5-flash",
     )
     # Kept for backward compatibility / display; the first model is the default.
     MODEL = MODELS[0]

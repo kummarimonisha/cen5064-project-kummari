@@ -30,7 +30,7 @@ only for the generative task of rewriting flagged bullets.
 **Tech stack:**
 - **Frontend:** Next.js (React) — drag-and-drop upload, score visualizer, AI panel.
 - **Backend:** Python + FastAPI (n-tier: Presentation / Service / Domain / Data).
-- **AI:** Google AI Studio — Gemini (tries `models/gemini-3.8-flash` and falls
+- **AI:** Google AI Studio — Gemini (tries `models/gemini-3.1-flash-lite` and falls
   back to other free-tier flash models if one is busy), the single
   external service.
 
