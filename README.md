@@ -1,48 +1,72 @@
-# [AI-Powered Resume Optimizer & ATS Matcher]
+# AI-Powered Resume Optimizer & ATS Matcher
 
-<!-- CI badge: after Session 4, replace ORG/REPO and the workflow filename, then uncomment:
-![CI](https://github.com/ORG/REPO/actions/workflows/ci.yml/badge.svg)
--->
+![CI](https://github.com/kummarimonisha/cen5064-project-kummari/actions/workflows/ci.yml/badge.svg)
 
-**Student:** [Monisha Kummari] · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** [@DavLien]
 
-## Project (approval paragraph — write this by Sun Aug 30)
+**Student:** Monisha Kummari · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** @DavLien
 
-[One paragraph: What is the system? Who is it for? What are its 3–4 core features?
-This paragraph is your approval request — see the Project Brief, Section 2.]
+## Project Description
 
-An interactive full-stack web application designed to evaluate and optimize candidate resumes against specific job descriptions. Users upload a resume (PDF/DOCX) and paste a target job posting to receive immediate analysis and AI-assisted improvements. Rather than relying solely on external API calls, the system executes custom, deterministic domain logic such as calculating rule-based keyword match percentages, enforcing section structure validations, and flagging unquantified bullet points before invoking AI. Gemini 1.5 Pro is used directly via Google AI Studio as the single external AI service to generate section bullet revisions and tailored cover letter drafts grounded in the candidate's background. 
+[One paragraph: What is the system? Who is it for? What are its 3–4 core features?]
+
+An interactive full-stack web application designed to evaluate and optimize candidate resumes against specific job descriptions. Users upload a resume (PDF/DOCX) and paste a target job posting to receive immediate analysis and AI-assisted improvements. Rather than relying solely on external API calls, the system executes custom, deterministic domain logic such as calculating rule-based keyword match percentages, enforcing section structure validations, and flagging unquantified bullet points before invoking AI. Google's Gemini (model models/gemini-3.8-flash) is used directly via Google AI Studio as the single external AI service to generate section bullet revisions and tailored cover letter drafts grounded in the candidate's background. 
 
 Core Features: 
 1. Automated Document Parsing & Visualizer: Extracts raw text and structural sections (Education, Experience, Skills) locally from uploaded PDF/DOCX files and displays a side-by-side parsed preview.
 2. Deterministic Resume Audit & ATS Keyword Analysis: Evaluates resumes using custom internal domain rules—calculating exact keyword overlap scores, flagging bullet points missing quantified metrics, and identifying structural format gaps without needing external APIs.
-3. AI Bullet Point Refinement: Direct API integration with Gemini 1.5 Pro to suggest high-impact, quantified bullet point rewrites specifically tailored to key job requirements.
+3. AI Bullet Point Refinement: Direct API integration with Google Gemini to suggest high-impact, quantified bullet point rewrites specifically tailored to key job requirements.
 4. Tailored Draft Generation: Generates customized cover letter drafts grounded in the candidate’s extracted experience and target job requirements. 
 
 Tech Stack: 
 1. Frontend: React / Next.js (Simple UI with file drag-and-drop & score visualizer)
 2. Backend: Python (FastAPI / Flask) running lightweight synchronous processing
-3. AI Integration: Google AI Studio (Gemini 1.5 Pro direct API call single external service)
+3. AI Integration: Google AI Studio (Gemini, model models/gemini-3.8-flash; single external service)
 4. Database: PostgreSQL (or SQLite for simple local development)
 
 ## How to run
 
+Backend (Python 3.12, FastAPI). From a clean clone:
+
+```bash
+# 1. Create and activate a virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start the API
+uvicorn main:app --reload
 ```
-[Exact commands to build and run your system from a clean clone.
-Update this every time the steps change — your partner and your
-instructor will follow it literally on conference days.]
+
+Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
+Use the **POST `/api/upload`** endpoint to upload a `.pdf` or `.docx` resume;
+the response returns the locally extracted text. Unsupported or corrupt files
+return a `400` with an explanatory message.
+
+### Run the tests
+
+```bash
+pytest -q
 ```
 
 ## Architecture
 
 ### Tier breakdown (Session 2 studio)
 
-| Tier | Responsibilities in THIS system | Class 
-|------|--------------------------------|
-| Presentation | ResumeUploadView - Manages the drag-and-drop UI and client-side file validation. ScoreVisualizer - Renders the calculated ATS keyword overlap and audit results. JobDescriptionForm - Collects and sanitizes the target job posting text. |
-| Service | ResumeAnalysisService - Orchestrates the flow of parsing the resume, running domain audits, and returning the complete analysis. CoverLetterService - Coordinates passing parsed data and job requirements to the AI client to generate drafts.|
-| Domain | Resume - Represents the candidate's extracted data and guards its own state. ATSScorer - Calculates the deterministic keyword overlap percentage. BulletPointAuditor - Evaluates experience bullets to flag missing quantified metrics.|
-| Data | DocumentParser - Extracts raw text and structural sections from uploaded PDF/DOCX files. GeminiAIClient - Handles the direct HTTP network calls to Google AI Studio. ResumeRepository - Manages saving and loading analysis results to the database.|
+| Tier | Class | Responsibilities in THIS system |
+| :--- | :--- | :--- |
+| **Presentation** | `ResumeUploadView` | Manages the drag-and-drop UI and client-side file validation. |
+| | `ScoreVisualizer` | Renders the calculated ATS keyword overlap and audit results. |
+| | `JobDescriptionForm` | Collects and sanitizes the target job posting text. |
+| **Service** | `ResumeAnalysisService` | Orchestrates the flow of parsing the resume, running domain audits, and returning the complete analysis. |
+| | `CoverLetterService` | Coordinates passing parsed data and job requirements to the AI client to generate drafts. |
+| **Domain** | `Resume` | Represents the candidate's extracted data and guards its own state. |
+| | `ATSScorer` | Calculates the deterministic keyword overlap percentage. |
+| | `BulletPointAuditor` | Evaluates experience bullets to flag missing quantified metrics. |
+| **Data** | `DocumentParser` | Extracts raw text and structural sections from uploaded PDF/DOCX files. |
+| | `GeminiAIClient` | Handles the direct HTTP network calls to Google AI Studio. |
+| | `ResumeRepository` | Manages saving and loading analysis results to the database. |
 
 ### C4 — Context & Container (Session 3 studio)
 
@@ -129,16 +153,32 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 
 | # | Decision | Status |
 |---|----------|--------|
-| [001](docs/adr/adr-001.md) | [What I am building and why] | [proposed] |
+| [001](docs/adr/adr-001.md) | Build a Resume Analyzer using deterministic logic and Google Gemini | accepted |
+| [002](docs/adr/adr-002.md) | [Utilizing FastAPI Swagger UI for Initial Working Slice] | [accepted] |
+| [003](docs/adr/adr-003.md) | Protect the AI feature with a shared access token and env-var secrets | [accepted] |
+
 
 ## Weekly log (optional but recommended)
 
 A one-line note per week keeps your commit story readable:
 
-- Week 1 (Aug 24): repo created, three ideas drafted
-- Week 2 (Aug 31): ...
+- Week 1 (Aug 24): repo created, project idea drafted
+- Week 2 (Aug 31): Tier breakdown mapped.
+- Week 3 (Sep 7): C4 Context/Container rendered in Mermaid.
+- Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
+- Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
+- Week 6 (Sep 28): Code for feature 1
+- Week 7 (Oct 5): Finish feature 1, added feature 2, and added ADR-002.
+- Week 8 (Oct 12): Wire Domain into the endpoint: connect ATSScorer + BulletPointAuditor into ResumeAnalysisService so /api/upload returns score + flagged bullets end-to-end
+- Week 9 (Oct 19): Issue #3: Gemini bullet refinement (GeminiAIClient in the Data tier, /api/refine endpoint)
+- Week 10 (Oct 26): ResumeRepository (SQLite behind an interface)
+- Week 11 (Nov 2): Issue #5: Next.js frontend (ResumeUploadView, ScoreVisualizer)
+- Week 12 (Nov 9): Cover-letter generation (CoverLetterService) + added ADR-003
+- Week 13 (Nov 16): Hardening + final doc update: SOLID/pattern mapping, demo video
 
 ## Known Issues
 
 - Add issue 1: Setup PDF/DOCX Document Parsing endpoint
 - Add issue 2: Implement ATS Keyword Overlap Scoring
+- Add issue 3: AI Bullet Point Refinement
+- Add issue 4: UI File Upload Visualization
