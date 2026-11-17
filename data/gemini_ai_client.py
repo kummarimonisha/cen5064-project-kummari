@@ -21,10 +21,15 @@ class GeminiAIClient:
     builds the prompt, makes the call, and returns plain Python strings. The
     Service tier depends on this client, never on the SDK directly.
 
-    Resilience: Google's free tier frequently throttles an individual model
-    (503 "high demand") or times out (504). To keep the feature working, the
-    client tries a prioritized LIST of models and retries each a few times with
-    a short backoff. It only fails if every model fails every attempt.
+    Reliability design (why the AI feature stays working on the free tier):
+      1. ONE bullet per request -- each call is tiny and fast, which avoids the
+         504 "deadline exceeded" that large requests cause.
+      2. STREAMING -- the response is read token-by-token so the connection
+         stays active and does not idle out waiting for a full answer (the main
+         cure for 504s).
+      3. MODEL FALLBACK + RETRY -- a prioritized list of models, each retried a
+         couple of times, so 503 "high demand" on one model falls through to the
+         next instead of failing the feature.
 
     Security:
       - The API key is read from the GEMINI_API_KEY environment variable and is
@@ -33,13 +38,10 @@ class GeminiAIClient:
         this module never requires a key. That keeps CI and tests import-safe.
     """
 
-    # Tried in order. If one is busy/slow, the client falls back to the next.
-    # These are the free-tier text models observed on the project's key; the
-    # list is easy to reorder or extend.
+    # Tried in order. "lite" models first: faster and far less likely to hit
+    # the free tier's "high demand" throttling. Every name here was confirmed
+    # available on the project's API key via models.list().
     MODELS = (
-        # "lite" models first -- they are faster and far less likely to hit the
-        # free tier's "high demand" throttling. Then the standard flash models.
-        # Every name here was confirmed available on the project's API key.
         "models/gemini-3.1-flash-lite",
         "models/gemini-3.5-flash-lite",
         "models/gemini-2.5-flash-lite",
@@ -52,10 +54,8 @@ class GeminiAIClient:
     # Kept for backward compatibility / display; the first model is the default.
     MODEL = MODELS[0]
 
-    # How many times to try EACH model before moving to the next, and the base
-    # wait (seconds) between retries (grows a little each attempt).
     _RETRIES_PER_MODEL = 2
-    _BACKOFF_SECONDS = 1.5
+    _BACKOFF_SECONDS = 1.0
     _TIMEOUT_MS = 60_000
 
     def __init__(self, api_key: str | None = None, client=None):
@@ -80,86 +80,86 @@ class GeminiAIClient:
         self._client = genai.Client(api_key=self._api_key)
         return self._client
 
-    def build_prompt(self, flagged_bullets: list[str], job_keywords: list[str]) -> str:
-        """Build the instruction sent to Gemini.
-
-        The prompt includes BOTH the flagged bullets and the target job
-        requirements, so the rewrite is tailored to the role.
-        """
-        bullets_block = NL.join(f"- {b}" for b in flagged_bullets)
+    def build_prompt(self, bullet: str, job_keywords: list[str]) -> str:
+        """Build the instruction to rewrite ONE bullet, tailored to the job."""
         keywords_block = ", ".join(job_keywords) if job_keywords else "(none provided)"
         intro = (
-            "You are a resume-writing assistant. Rewrite each resume bullet point "
-            "below so it is specific and quantified (include a concrete metric or "
-            "number), and tailor it to the target job requirements."
+            "You are a resume-writing assistant. Rewrite the single resume "
+            "bullet point below so it is specific and quantified (include a "
+            "concrete metric or number) and tailored to the target job."
         )
         closing = (
-            "Return exactly one rewritten bullet per line, in the same order, "
-            "with no numbering, blank lines, or extra commentary."
+            "Return ONLY the rewritten bullet as one line, with no label, "
+            "quotes, bullet character, or extra commentary."
         )
         parts = [
             intro,
             "",
-            f"Target job requirements (keywords): {keywords_block}",
+            f"Target job keywords: {keywords_block}",
             "",
-            "Bullet points to rewrite:",
-            bullets_block,
+            f"Bullet to rewrite: {bullet}",
             "",
             closing,
         ]
         return NL.join(parts)
 
-    def _call_model(self, client, model: str, prompt: str) -> str:
-        """Make a single generate_content call to one model and return its text."""
+    def _stream_once(self, client, model: str, prompt: str) -> str:
+        """Stream a single request to one model and return the assembled text.
+
+        Streaming keeps the connection active while the model generates, which
+        is the main defense against 504 "deadline exceeded".
+        """
         from google.genai import types
 
-        response = client.models.generate_content(
+        chunks = []
+        stream = client.models.generate_content_stream(
             model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 http_options=types.HttpOptions(timeout=self._TIMEOUT_MS)
             ),
         )
-        return getattr(response, "text", None) or ""
+        for chunk in stream:
+            piece = getattr(chunk, "text", None)
+            if piece:
+                chunks.append(piece)
+        return "".join(chunks).strip()
 
-    def generate_revisions(
-        self, flagged_bullets: list[str], job_keywords: list[str]
-    ) -> list[str]:
-        """Ask Gemini to rewrite the flagged bullets. Returns one string each.
-
-        Returns an empty list if there are no bullets to rewrite (no API call).
-        Tries each model in MODELS, retrying each a few times, so transient
-        throttling (503) or timeouts (504) on one model do not break the feature.
-
-        Raises:
-            AIClientError: only if the key is missing, or every model fails every
-                attempt (the last provider error is included).
-        """
-        # No bullets -> nothing to do, and no reason to spend an API call.
-        if not flagged_bullets:
-            return []
-
-        prompt = self.build_prompt(flagged_bullets, job_keywords)
-        client = self._get_client()
-
+    def _rewrite_one(self, client, bullet: str, job_keywords: list[str]) -> str:
+        """Rewrite a single bullet, trying each model with retries."""
+        prompt = self.build_prompt(bullet, job_keywords)
         last_error: Exception | None = None
         for model in self.MODELS:
             for attempt in range(self._RETRIES_PER_MODEL):
                 try:
-                    text = self._call_model(client, model, prompt)
-                    if text.strip():
-                        return [ln.strip() for ln in text.splitlines() if ln.strip()]
-                    # Empty text: treat as a soft failure and try again / next model.
-                    last_error = AIClientError("The AI service returned an empty response.")
-                except Exception as exc:  # noqa: BLE001 - we try the next model
+                    text = self._stream_once(client, model, prompt)
+                    if text:
+                        # Collapse any accidental line breaks into one line.
+                        return " ".join(text.split())
+                    last_error = AIClientError("The AI returned an empty response.")
+                except Exception as exc:  # noqa: BLE001 - fall through to next model
                     last_error = exc
-                # Short backoff before the next attempt (not after the final one).
                 if attempt < self._RETRIES_PER_MODEL - 1:
-                    time.sleep(self._BACKOFF_SECONDS * (attempt + 1))
-
-        # Every model failed every attempt. Surface the last provider message;
-        # the API key is never part of these messages, so this does not leak it.
+                    time.sleep(self._BACKOFF_SECONDS)
         raise AIClientError(
             f"The AI service is unavailable right now (tried "
             f"{len(self.MODELS)} models): {last_error}"
         )
+
+    def generate_revisions(
+        self, flagged_bullets: list[str], job_keywords: list[str]
+    ) -> list[str]:
+        """Rewrite each flagged bullet, one small streamed request at a time.
+
+        Returns one rewritten string per input bullet (same order). Returns an
+        empty list if there are no bullets to rewrite (no API call).
+
+        Raises:
+            AIClientError: if the key is missing, or every model fails every
+                attempt for a bullet.
+        """
+        if not flagged_bullets:
+            return []
+
+        client = self._get_client()
+        return [self._rewrite_one(client, bullet, job_keywords) for bullet in flagged_bullets]
