@@ -16,14 +16,14 @@ export default function Home() {
   const [analysis, setAnalysis] = useState(null);
   const [revisions, setRevisions] = useState(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [dragging, setDragging] = useState(false);
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const [loadingRefine, setLoadingRefine] = useState(false);
 
   const fileInput = useRef(null);
 
-  // Client-side file-type check: reject anything that is not PDF/DOCX BEFORE
-  // sending it to the backend (Issue #4 "Done when").
+  // Client-side file-type check: reject non-PDF/DOCX BEFORE sending to backend.
   function acceptFile(f) {
     if (!f) return;
     const name = f.name.toLowerCase();
@@ -44,6 +44,7 @@ export default function Home() {
 
   async function analyze() {
     setError("");
+    setNotice("");
     setAnalysis(null);
     setRevisions(null);
     if (!file) {
@@ -71,6 +72,7 @@ export default function Home() {
 
   async function refine() {
     setError("");
+    setNotice("");
     setRevisions(null);
     const list = bullets
       .split(NEWLINE)
@@ -81,8 +83,6 @@ export default function Home() {
       return;
     }
     setLoadingRefine(true);
-    // Abort the request if it takes longer than 40 seconds so the UI shows a
-    // clear message instead of spinning on "Rewriting..." forever.
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 75000);
     try {
@@ -97,6 +97,9 @@ export default function Home() {
         setError(data.detail || "AI rewrite failed.");
       } else {
         setRevisions(data.revisions);
+        if (data.revisions.length > 0) {
+          setNotice("Done! Your bullets have been rewritten below.");
+        }
       }
     } catch (err) {
       if (err.name === "AbortError") {
@@ -112,17 +115,26 @@ export default function Home() {
 
   return (
     <main className="container">
-      <h1>AI Resume Optimizer & ATS Matcher</h1>
-      <p className="subtitle">
-        Upload a resume, paste a job description, and see how well they match,
-        then rewrite weak bullet points with AI.
-      </p>
+      <header className="hero">
+        <span className="badge">AI-Powered · ATS Ready</span>
+        <h1>Resume Optimizer &amp; ATS Matcher</h1>
+        <p>
+          Upload your resume, paste a job description, and see how well they
+          match. Then polish weak bullet points with AI.
+        </p>
+      </header>
 
-      {error ? <p className="error">{error}</p> : null}
+      {error ? <div className="error">{error}</div> : null}
+      {notice ? <div className="success">{notice}</div> : null}
 
-      {/* Step 1: upload + job description + analyze */}
+      {/* Step 1: upload + job description */}
       <section className="card">
-        <label>1. Your resume (PDF or DOCX)</label>
+        <div className="card-head">
+          <span className="step">1</span>
+          <h2>Upload resume &amp; job description</h2>
+        </div>
+
+        <label>Your resume (PDF or DOCX)</label>
         <div
           className={dragging ? "dropzone dragging" : "dropzone"}
           onDragOver={(e) => {
@@ -133,7 +145,8 @@ export default function Home() {
           onDrop={onDrop}
           onClick={() => fileInput.current && fileInput.current.click()}
         >
-          Drag and drop your resume here, or click to choose a file.
+          <div className="big">📄</div>
+          Drag &amp; drop your resume here, or click to choose a file.
           <input
             ref={fileInput}
             type="file"
@@ -144,7 +157,7 @@ export default function Home() {
           {file ? <div className="filename">Selected: {file.name}</div> : null}
         </div>
 
-        <label>2. Target job description</label>
+        <label>Target job description</label>
         <textarea
           rows={6}
           value={jobDescription}
@@ -153,6 +166,7 @@ export default function Home() {
         />
 
         <button onClick={analyze} disabled={loadingAnalyze}>
+          {loadingAnalyze ? <span className="spin" /> : null}
           {loadingAnalyze ? "Analyzing..." : "Analyze resume"}
         </button>
       </section>
@@ -160,8 +174,29 @@ export default function Home() {
       {/* Analysis results */}
       {analysis ? (
         <section className="card">
-          <label>ATS keyword match</label>
-          <div className="score">{analysis.ats_score}%</div>
+          <div className="card-head">
+            <span className="step">✓</span>
+            <h2>Your match</h2>
+          </div>
+
+          <div className="score-row">
+            <div className="ring" style={{ "--val": analysis.ats_score }}>
+              <div className="inner">
+                <div>
+                  <div className="pct">{Math.round(analysis.ats_score)}%</div>
+                  <div className="lbl">match</div>
+                </div>
+              </div>
+            </div>
+            <div className="score-caption">
+              Your resume matches{" "}
+              <span className="count">
+                {analysis.matched_keywords.length} of{" "}
+                {analysis.matched_keywords.length + analysis.missing_keywords.length}
+              </span>{" "}
+              key skills from this job.
+            </div>
+          </div>
 
           <label>Keywords you already have</label>
           {analysis.matched_keywords.length ? (
@@ -173,7 +208,7 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <p className="muted">None matched yet.</p>
+            <p className="muted">None matched yet — add relevant skills.</p>
           )}
 
           <label>Keywords you are missing</label>
@@ -186,18 +221,22 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <p className="muted">Nothing missing, great match!</p>
+            <p className="muted">Nothing missing — great match!</p>
           )}
         </section>
       ) : null}
 
-      {/* Step 2: AI rewrite of bullets */}
+      {/* Step 2: AI rewrite */}
       <section className="card">
-        <label>3. Rewrite bullet points with AI</label>
+        <div className="card-head">
+          <span className="step">2</span>
+          <h2>Rewrite bullet points with AI</h2>
+        </div>
         <p className="muted">
           Paste your experience bullet points (one per line). The AI rewrites the
           ones that lack a quantified metric, tailored to the job above.
         </p>
+        <label>Bullet points</label>
         <textarea
           rows={5}
           value={bullets}
@@ -214,6 +253,7 @@ export default function Home() {
         />
 
         <button className="secondary" onClick={refine} disabled={loadingRefine}>
+          {loadingRefine ? <span className="spin" /> : null}
           {loadingRefine ? "Rewriting..." : "Rewrite with AI"}
         </button>
       </section>
@@ -221,7 +261,10 @@ export default function Home() {
       {/* Rewrite results */}
       {revisions ? (
         <section className="card">
-          <label>AI-rewritten bullets (before and after)</label>
+          <div className="card-head">
+            <span className="step">✨</span>
+            <h2>AI-rewritten bullets</h2>
+          </div>
           {revisions.length ? (
             revisions.map((r, i) => (
               <div className="pair" key={i}>
@@ -231,11 +274,16 @@ export default function Home() {
             ))
           ) : (
             <p className="muted">
-              No bullets needed rewriting, they all already include a number.
+              No bullets needed rewriting — they all already include a number.
             </p>
           )}
         </section>
       ) : null}
+
+      <p className="muted" style={{ textAlign: "center", marginTop: 8 }}>
+        Free features (parse &amp; score) are open to everyone. The AI rewrite is
+        access-controlled to protect usage limits.
+      </p>
     </main>
   );
 }
