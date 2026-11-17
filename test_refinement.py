@@ -15,23 +15,31 @@ NL = chr(10)
 # GeminiAIClient: prompt building + response parsing (API fully mocked)
 # --------------------------------------------------------------------------
 
-def test_prompt_includes_bullets_and_job_keywords():
+def _chunk(text):
+    """A fake streaming chunk with a .text attribute."""
+    c = MagicMock()
+    c.text = text
+    return c
+
+
+def test_prompt_includes_bullet_and_job_keywords():
     ai = GeminiAIClient(api_key="test-key")
     prompt = ai.build_prompt(
-        flagged_bullets=["Led the backend team"],
+        bullet="Led the backend team",
         job_keywords=["python", "fastapi"],
     )
-    # The prompt must contain BOTH the flagged bullet and the job requirements.
+    # The prompt must contain BOTH the bullet and the job keywords.
     assert "Led the backend team" in prompt
     assert "python" in prompt
     assert "fastapi" in prompt
 
-def test_generate_revisions_parses_mocked_response():
-    # Build a fake SDK client so NO real network call happens.
-    fake_response = MagicMock()
-    fake_response.text = "Rewrote bullet one with 30% impact" + NL + "Rewrote bullet two"
+def test_generate_revisions_parses_streamed_response():
+    # generate_content_stream returns an iterable of chunks; one call per bullet.
     fake_sdk = MagicMock()
-    fake_sdk.models.generate_content.return_value = fake_response
+    fake_sdk.models.generate_content_stream.side_effect = [
+        [_chunk("Rewrote bullet one "), _chunk("with 30% impact")],
+        [_chunk("Rewrote bullet two")],
+    ]
 
     ai = GeminiAIClient(client=fake_sdk)
     revisions = ai.generate_revisions(
@@ -40,7 +48,8 @@ def test_generate_revisions_parses_mocked_response():
     )
 
     assert revisions == ["Rewrote bullet one with 30% impact", "Rewrote bullet two"]
-    fake_sdk.models.generate_content.assert_called_once()
+    # One streamed call per bullet.
+    assert fake_sdk.models.generate_content_stream.call_count == 2
 
 def test_generate_revisions_empty_bullets_makes_no_call():
     fake_sdk = MagicMock()
@@ -48,11 +57,12 @@ def test_generate_revisions_empty_bullets_makes_no_call():
     assert ai.generate_revisions([], ["python"]) == []
     fake_sdk.models.generate_content.assert_not_called()
 
-def test_generate_revisions_raises_on_empty_response():
-    fake_response = MagicMock()
-    fake_response.text = ""
+@patch("data.gemini_ai_client.time.sleep", lambda *_a, **_k: None)
+def test_generate_revisions_raises_when_all_models_fail():
+    # Every streamed call yields no text -> after exhausting all models/retries,
+    # the client raises. time.sleep is patched so retries are instant.
     fake_sdk = MagicMock()
-    fake_sdk.models.generate_content.return_value = fake_response
+    fake_sdk.models.generate_content_stream.return_value = []  # no chunks
 
     ai = GeminiAIClient(client=fake_sdk)
     try:
@@ -60,6 +70,22 @@ def test_generate_revisions_raises_on_empty_response():
         raise AssertionError("expected AIClientError")
     except AIClientError:
         pass
+
+
+@patch("data.gemini_ai_client.time.sleep", lambda *_a, **_k: None)
+def test_generate_revisions_falls_back_to_next_model():
+    # First model's two attempts raise "high demand"; the SECOND model streams
+    # a good answer. The feature should still work (503 does not break it).
+    fake_sdk = MagicMock()
+    fake_sdk.models.generate_content_stream.side_effect = [
+        Exception("503 UNAVAILABLE high demand"),
+        Exception("503 UNAVAILABLE high demand"),
+        [_chunk("Rewritten bullet with 20% improvement")],  # second model works
+    ]
+
+    ai = GeminiAIClient(client=fake_sdk)
+    result = ai.generate_revisions(["a bullet"], ["python"])
+    assert result == ["Rewritten bullet with 20% improvement"]
 
 # --------------------------------------------------------------------------
 # ResumeAnalysisService.refine_bullets: orchestration (AI client mocked)
@@ -76,7 +102,12 @@ def test_service_refines_only_unquantified_bullets():
     ]
     result = service.refine_bullets(bullets, job_text="Python backend engineer")
 
-    assert result == ["Led the backend team of 8 engineers"]
+    assert result == [
+        {
+            "before": "Led the backend team",
+            "after": "Led the backend team of 8 engineers",
+        }
+    ]
     sent_bullets, _sent_keywords = fake_ai.generate_revisions.call_args.args
     assert sent_bullets == ["Led the backend team"]
 
@@ -139,4 +170,11 @@ def test_refine_endpoint_allows_valid_token_and_returns_revisions():
         )
 
     assert response.status_code == 200
-    assert response.json() == {"revisions": ["Led a 6-person backend team"]}
+    assert response.json() == {
+        "revisions": [
+            {
+                "before": "Led the backend team",
+                "after": "Led a 6-person backend team",
+            }
+        ]
+    }

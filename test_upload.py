@@ -77,4 +77,28 @@ def test_upload_returns_ats_score_end_to_end():
     assert response.status_code == 200
     body = response.json()
     assert body["ats_score"] == 50.0
+    assert "python" in body["matched_keywords"]
+    assert "docker" in body["missing_keywords"]
     assert "Python" in body["extracted_text"]
+
+
+# --------------------------------------------------------------------------
+# ParserFactory: Factory Method picks the right parser per file type
+# --------------------------------------------------------------------------
+
+def test_parser_factory_returns_correct_parser_types():
+    from data.document_parser import DocxParser, ParserFactory, PdfParser
+
+    assert isinstance(ParserFactory.get_parser("resume.pdf"), PdfParser)
+    assert isinstance(ParserFactory.get_parser("resume.docx"), DocxParser)
+    assert isinstance(ParserFactory.get_parser("RESUME.PDF"), PdfParser)
+
+
+def test_parser_factory_rejects_unsupported_type():
+    from data.document_parser import DocumentParseError, ParserFactory
+
+    try:
+        ParserFactory.get_parser("photo.png")
+        raise AssertionError("expected DocumentParseError")
+    except DocumentParseError:
+        pass
