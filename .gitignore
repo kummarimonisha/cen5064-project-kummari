@@ -23,3 +23,7 @@ Thumbs.db
 # Local SQLite database (not committed)
 resume_analyses.db
 *.db
+
+# Final deliverable artifacts (submitted on Canvas, not in repo)
+CEN5064_Final_Presentation.pptx
+*.pptx
