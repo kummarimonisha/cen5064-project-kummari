@@ -127,6 +127,7 @@ external Gemini call.
 | | `BulletPointAuditor` | Flags experience bullets that contain no quantified metric. |
 | **Data** | `ResumeParser` / `PdfParser` / `DocxParser` / `ParserFactory` | Factory-Method document parsing: extracts raw text from PDF/DOCX. |
 | | `GeminiAIClient` | The only component that talks to the Gemini SDK / network; builds the prompt and parses the response. |
+| | `ResumeRepository` | Persists each analysis to SQLite behind a repository interface (swappable store). |
 
 ### C4 — Context & Container
 
@@ -143,9 +144,10 @@ flowchart TB
     subgraph Backend [FastAPI Backend]
     ui -->|REST/JSON| svc[Service tier<br/>ResumeAnalysisService]
     svc --> dom[Domain tier<br/>ATSScorer, BulletPointAuditor]
-    svc --> data[Data tier<br/>ParserFactory]
+    svc --> data[Data tier<br/>ParserFactory, ResumeRepository]
     end
 
+    svc -->|reads/writes| db[(SQLite<br/>analyses)]
     svc -->|HTTPS, access-controlled| gemini[Google AI Studio<br/>External System]
 ```
 
@@ -205,6 +207,7 @@ Decisions live in [`docs/adr/`](docs/adr/). Creational-pattern map:
 | [001](docs/adr/adr-001.md) | Build a Resume Analyzer using deterministic logic and Google Gemini | accepted |
 | [002](docs/adr/adr-002.md) | Use the FastAPI Swagger UI for the initial working slice | superseded by Next.js frontend |
 | [003](docs/adr/adr-003.md) | Protect the AI feature with a shared access token and env-var secrets | accepted |
+| [004](docs/adr/adr-004.md) | Persist analysis results with SQLite behind a repository | accepted |
 
 ## Weekly log
 
@@ -227,9 +230,28 @@ Decisions live in [`docs/adr/`](docs/adr/). Creational-pattern map:
 - Issue #3: AI bullet-point refinement (Gemini, access-controlled) — **done**
 - Issue #4: UI file upload & visualization (Next.js frontend) — **done**
 
+## SOLID & design patterns — where they live
+
+- **Single Responsibility** — each class has one job: `ATSScorer` (scoring),
+  `BulletPointAuditor` (auditing), `document_parser` classes (parsing),
+  `GeminiAIClient` (the AI call), `ResumeRepository` (persistence).
+- **Open/Closed** — `data/document_parser.py`: adding a file format is a new
+  `ResumeParser` subclass + one registry entry, with no edits to existing
+  parsers (replaced the old growing `if/elif`).
+- **Dependency Inversion** — `service/resume_analysis_service.py`: the service
+  receives its scorer, auditor, AI client, and repository **injected** in the
+  constructor and depends on those abstractions, not concretes. Tests inject
+  fakes; no network or database needed.
+- **Factory Method** (creational pattern) — `ParserFactory.get_parser()` picks
+  the right parser per file type. Full honest map in
+  [`docs/pattern-map.md`](docs/pattern-map.md) (Factory Method = genuine fit;
+  reasoned "no fit" for Abstract Factory, Builder, Prototype, Singleton).
+
 ## Known limitations
 
 - Keyword matching uses a curated skills dictionary (`domain/ats_scorer.py`);
   skills not in that list are not scored. Extend the dictionary as needed.
-- The AI rewrite depends on Google Gemini availability and the free-tier quota.
-- Analysis is stateless — results are not persisted to a database yet.
+- The AI rewrite depends on Google Gemini availability; the client falls back
+  across several free-tier models, but all can be busy at once.
+- Analyses are persisted to SQLite, but there is no history/read screen in the
+  UI yet (results are stored, not surfaced back to the user).

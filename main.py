@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from config import get_ai_access_token, get_gemini_api_key
 from data.gemini_ai_client import AIClientError, GeminiAIClient
+from data.resume_repository import ResumeRepository
 from service.resume_analysis_service import DocumentParseError, ResumeAnalysisService
 
 app = FastAPI(title="AI-Powered Resume Optimizer & ATS Matcher")
@@ -17,9 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# The default service handles the free, local features (parse + score). It has
-# no AI client, so it can never make a paid call by accident.
-service = ResumeAnalysisService()
+# The default service handles the free, local features (parse + score) and
+# persists each analysis to SQLite. It has no AI client, so it can never make a
+# paid call by accident.
+service = ResumeAnalysisService(repository=ResumeRepository())
 
 @app.post("/api/upload")
 async def analyze_resume(

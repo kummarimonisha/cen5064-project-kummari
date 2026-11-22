@@ -18,13 +18,16 @@ class ResumeAnalysisService:
     Data tier.
     """
 
-    def __init__(self, scorer=None, auditor=None, ai_client=None):
+    def __init__(self, scorer=None, auditor=None, ai_client=None, repository=None):
         # Dependencies default to real implementations but can be injected,
-        # which is what the tests do (fake scorer / auditor / AI client). This
-        # is the Dependency Inversion Principle in miniature.
+        # which is what the tests do (fake scorer / auditor / AI client /
+        # repository). This is the Dependency Inversion Principle in miniature.
         self._scorer = scorer or ATSScorer()
         self._auditor = auditor or BulletPointAuditor()
         self._ai_client = ai_client
+        # The repository persists results. It is optional so the service can be
+        # used (and tested) without a database; when present, analyze() saves.
+        self._repository = repository
 
     def extract_resume_text(self, filename: str, content: bytes) -> str:
         """Extract raw text from an uploaded resume document (Issue #1).
@@ -46,12 +49,16 @@ class ResumeAnalysisService:
         """
         resume_text = extract_text_from_file(filename, content)
         report = self._scorer.score_report(resume_text, job_text)
-        return {
+        result = {
             "extracted_text": resume_text,
             "ats_score": report["score"],
             "matched_keywords": report["matched_keywords"],
             "missing_keywords": report["missing_keywords"],
         }
+        # Persist the result (logic -> storage) when a repository is configured.
+        if self._repository is not None:
+            self._repository.save_analysis(filename, result)
+        return result
 
     def refine_bullets(self, bullets: list[str], job_text: str) -> list[dict]:
         """Rewrite unquantified bullets with the AI client (Issue #3/#4).

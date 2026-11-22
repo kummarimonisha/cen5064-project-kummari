@@ -19,3 +19,7 @@ Thumbs.db
 # --- Local secrets/config (never commit credentials) ---
 .env
 *.local
+
+# Local SQLite database (not committed)
+resume_analyses.db
+*.db

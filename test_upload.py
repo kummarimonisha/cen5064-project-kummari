@@ -102,3 +102,36 @@ def test_parser_factory_rejects_unsupported_type():
         raise AssertionError("expected DocumentParseError")
     except DocumentParseError:
         pass
+
+
+# --------------------------------------------------------------------------
+# ResumeRepository: analysis results are persisted (logic -> storage)
+# --------------------------------------------------------------------------
+
+def test_repository_saves_and_counts(tmp_path):
+    from data.resume_repository import ResumeRepository
+
+    db = tmp_path / "test.db"
+    repo = ResumeRepository(db_path=str(db))
+    assert repo.count() == 0
+    row_id = repo.save_analysis(
+        "resume.docx",
+        {"ats_score": 50.0, "matched_keywords": ["python"], "missing_keywords": ["aws"]},
+    )
+    assert row_id == 1
+    assert repo.count() == 1
+
+
+def test_service_analyze_persists_result(tmp_path):
+    from data.resume_repository import ResumeRepository
+    from service.resume_analysis_service import ResumeAnalysisService
+
+    db = tmp_path / "svc.db"
+    repo = ResumeRepository(db_path=str(db))
+    service = ResumeAnalysisService(repository=repo)
+
+    content = _make_docx_bytes(["Skilled in Python and SQL."])
+    service.analyze("resume.docx", content, "Need Python and SQL")
+
+    # The analysis was stored.
+    assert repo.count() == 1
