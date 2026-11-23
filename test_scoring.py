@@ -2,47 +2,69 @@ from domain.ats_scorer import ATSScorer
 from domain.bullet_point_auditor import BulletPointAuditor
 
 # --------------------------------------------------------------------------
-# ATSScorer: verify the overlap math
+# ATSScorer: curated-skill keyword matching
 # --------------------------------------------------------------------------
 
-def test_overlap_half_of_keywords_match():
-    # Resume contains "python" and "fastapi" but not "docker" or "kubernetes".
-    # 2 matched / 4 unique required keywords = 50.0%.
+def test_extract_keywords_only_returns_known_skills():
+    # Only real skills from the job text are returned -- not filler words.
     scorer = ATSScorer()
-    resume = "Experienced developer skilled in Python and FastAPI."
-    job_keywords = ["python", "fastapi", "docker", "kubernetes"]
-    assert scorer.calculate_overlap(resume, job_keywords) == 50.0
+    job = "We want Python and SQL experience. You will collaborate with the team."
+    keywords = scorer.extract_keywords(job)
+    assert "python" in keywords
+    assert "sql" in keywords
+    # filler words are NOT keywords
+    assert "collaborate" not in keywords
+    assert "team" not in keywords
+    assert "experience" not in keywords
 
-def test_overlap_all_keywords_match():
+def test_matching_is_whole_word():
+    # "java" must NOT match inside "javascript".
     scorer = ATSScorer()
-    resume = "I know Python, SQL, and React."
-    job_keywords = ["python", "sql", "react"]
-    assert scorer.calculate_overlap(resume, job_keywords) == 100.0
+    report = scorer.score_report("I only know javascript.", "Need Java")
+    assert report["matched_keywords"] == []
+    assert report["missing_keywords"] == ["java"]
+    assert report["score"] == 0.0
 
-def test_overlap_no_keywords_match():
+def test_multi_word_phrase_is_one_keyword():
     scorer = ATSScorer()
-    resume = "I enjoy painting and hiking."
-    job_keywords = ["python", "sql"]
-    assert scorer.calculate_overlap(resume, job_keywords) == 0.0
+    job = "Strong data structures and algorithms."
+    keywords = scorer.extract_keywords(job)
+    assert "data structures" in keywords
+    assert "algorithms" in keywords
 
-def test_overlap_is_case_insensitive():
+def test_score_report_matched_and_missing():
+    # Resume has python + sql; job requires python, sql, docker, aws.
+    # 2 matched / 4 required = 50%.
     scorer = ATSScorer()
-    resume = "Built services with PYTHON."
-    job_keywords = ["Python"]
-    assert scorer.calculate_overlap(resume, job_keywords) == 100.0
+    resume = "Skilled in Python and SQL."
+    job = "Need Python, SQL, Docker and AWS."
+    report = scorer.score_report(resume, job)
+    assert report["score"] == 50.0
+    assert report["matched_keywords"] == ["python", "sql"]
+    assert report["missing_keywords"] == ["aws", "docker"]
 
-def test_overlap_deduplicates_job_keywords():
-    # "python" appears three times in the input but must count as ONE keyword.
-    # Resume matches python but not sql: 1 matched / 2 unique = 50.0%.
+def test_score_report_all_matched():
     scorer = ATSScorer()
-    resume = "Python developer."
-    job_keywords = ["python", "python", "python", "sql"]
-    assert scorer.calculate_overlap(resume, job_keywords) == 50.0
+    report = scorer.score_report("Python, SQL, React.", "Need Python SQL React")
+    assert report["score"] == 100.0
+    assert report["missing_keywords"] == []
 
-def test_overlap_empty_job_keywords_returns_zero():
-    # No required keywords means nothing to match against: avoid divide-by-zero.
+def test_score_report_is_case_insensitive():
     scorer = ATSScorer()
-    assert scorer.calculate_overlap("any resume text", []) == 0.0
+    report = scorer.score_report("Built services with PYTHON.", "Need python")
+    assert report["score"] == 100.0
+
+def test_score_report_no_known_skills_in_job_is_zero():
+    # Job mentions no known skills at all -> nothing to score against.
+    scorer = ATSScorer()
+    report = scorer.score_report("Python developer.", "We want a friendly person.")
+    assert report["score"] == 0.0
+    assert report["matched_keywords"] == []
+    assert report["missing_keywords"] == []
+
+def test_score_text_convenience():
+    scorer = ATSScorer()
+    assert scorer.score_text("Python and SQL", "Need Python SQL Docker AWS") == 50.0
 
 # --------------------------------------------------------------------------
 # BulletPointAuditor: verify number detection
@@ -67,24 +89,3 @@ def test_all_bullets_quantified_returns_empty():
 def test_empty_bullet_list_returns_empty():
     auditor = BulletPointAuditor()
     assert auditor.flag_unquantified([]) == []
-
-# --------------------------------------------------------------------------
-# ATSScorer.score_text: end-to-end from job-description TEXT to a percentage
-# --------------------------------------------------------------------------
-
-def test_score_text_half_match():
-    # Job text yields exactly 4 keywords (python, fastapi, docker, kubernetes);
-    # the resume contains 2 of them -> 50.0%. Mirrors the professor's example.
-    scorer = ATSScorer()
-    resume = "Experienced developer skilled in Python and FastAPI."
-    job_text = "Python FastAPI Docker Kubernetes"
-    assert scorer.score_text(resume, job_text) == 50.0
-
-def test_extract_keywords_drops_stopwords_and_short_tokens():
-    scorer = ATSScorer()
-    keywords = scorer.extract_keywords("We will build the API with Python")
-    # "we", "will", "the", "with" are stopwords; single letters are dropped.
-    assert "python" in keywords
-    assert "api" in keywords
-    assert "the" not in keywords
-    assert "we" not in keywords

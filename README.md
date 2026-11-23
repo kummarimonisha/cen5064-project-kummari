@@ -2,183 +2,256 @@
 
 ![CI](https://github.com/kummarimonisha/cen5064-project-kummari/actions/workflows/ci.yml/badge.svg)
 
-
 **Student:** Monisha Kummari · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** @DavLien
 
 ## Project Description
 
-[One paragraph: What is the system? Who is it for? What are its 3–4 core features?]
+An interactive full-stack web application that evaluates and optimizes candidate
+resumes against a specific job description. The user uploads a resume (PDF/DOCX)
+and pastes a target job posting; the app returns an ATS keyword-match score that
+shows which required skills the resume already has and which it is missing, and
+(for authorized users) rewrites weak experience bullet points with AI.
 
-An interactive full-stack web application designed to evaluate and optimize candidate resumes against specific job descriptions. Users upload a resume (PDF/DOCX) and paste a target job posting to receive immediate analysis and AI-assisted improvements. Rather than relying solely on external API calls, the system executes custom, deterministic domain logic such as calculating rule-based keyword match percentages, enforcing section structure validations, and flagging unquantified bullet points before invoking AI. Google's Gemini (model models/gemini-3.8-flash) is used directly via Google AI Studio as the single external AI service to generate section bullet revisions and tailored cover letter drafts grounded in the candidate's background. 
+The design deliberately separates **deterministic domain logic** from the
+**generative AI**: keyword scoring and bullet auditing run entirely in custom
+Python domain rules (no AI, fully testable), while Google's Gemini is invoked
+only for the generative task of rewriting flagged bullets.
 
-Core Features: 
-1. Automated Document Parsing & Visualizer: Extracts raw text and structural sections (Education, Experience, Skills) locally from uploaded PDF/DOCX files and displays a side-by-side parsed preview.
-2. Deterministic Resume Audit & ATS Keyword Analysis: Evaluates resumes using custom internal domain rules—calculating exact keyword overlap scores, flagging bullet points missing quantified metrics, and identifying structural format gaps without needing external APIs.
-3. AI Bullet Point Refinement: Direct API integration with Google Gemini to suggest high-impact, quantified bullet point rewrites specifically tailored to key job requirements.
-4. Tailored Draft Generation: Generates customized cover letter drafts grounded in the candidate’s extracted experience and target job requirements. 
+**Core features:**
+1. **Document parsing** — extracts raw text locally from uploaded PDF/DOCX files.
+2. **ATS keyword analysis** — matches the resume against a curated set of real
+   skills found in the job description and reports a score plus the matched and
+   missing keywords.
+3. **Bullet-point auditing** — flags experience bullets that lack a quantified
+   metric.
+4. **AI bullet refinement** — rewrites flagged bullets with Google Gemini,
+   tailored to the job; access-controlled so it cannot be abused.
 
-Tech Stack: 
-1. Frontend: React / Next.js (Simple UI with file drag-and-drop & score visualizer)
-2. Backend: Python (FastAPI / Flask) running lightweight synchronous processing
-3. AI Integration: Google AI Studio (Gemini, model models/gemini-3.8-flash; single external service)
-4. Database: PostgreSQL (or SQLite for simple local development)
+**Tech stack:**
+- **Frontend:** Next.js (React) — drag-and-drop upload, score visualizer, AI panel.
+- **Backend:** Python + FastAPI (n-tier: Presentation / Service / Domain / Data).
+- **AI:** Google AI Studio — Gemini (tries `models/gemini-3.1-flash-lite` and falls
+  back to other free-tier flash models if one is busy), the single
+  external service.
 
 ## How to run
 
-Backend (Python 3.12, FastAPI). From a clean clone:
+The app has two parts: a Python/FastAPI **backend** and a Next.js **frontend**.
+Run each in its own terminal.
+
+### 1. Backend (Python 3.12, FastAPI)
 
 ```bash
-# 1. Create and activate a virtual environment
+# from the repo root
 python3.12 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-# 2. Install dependencies
 pip install -r requirements.txt
-
-# 3. Start the API
-uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
-Then open <http://127.0.0.1:8000/docs> for the interactive Swagger UI.
-Use the **POST `/api/upload`** endpoint to upload a `.pdf` or `.docx` resume;
-the response returns the locally extracted text. Unsupported or corrupt files
-return a `400` with an explanatory message.
+The API runs on <http://127.0.0.1:8000>. (Auto-generated API docs are available
+at `/docs` as a developer aid; the actual user interface is the Next.js app in
+step 2.)
 
-### Run the tests
+### 2. Frontend (Next.js)
+
+In a **second terminal**:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open <http://localhost:3000>. Drag and drop a resume, paste a job description,
+click **Analyze resume** to see the score with matched/missing keyword chips,
+then (with an access token) paste bullet points and click **Rewrite with AI**.
+
+Two example inputs are included for a quick demo: `example_resume.pdf` and
+`example_job_description.txt`.
+
+### 3. AI features (Gemini) — configuration and access control
+
+The AI rewrite uses Google Gemini and spends the project owner's quota, so it is
+protected. Copy `.env.example` to `.env` (the real `.env` is git-ignored and must
+never be committed) and set:
+
+```
+GEMINI_API_KEY=your-gemini-api-key-here      # from https://aistudio.google.com
+AI_ACCESS_TOKEN=your-chosen-secret-token      # any long random string you pick
+```
+
+- The free features (upload, parse, ATS score) work with no key and no token.
+- The AI endpoint requires the `AI_ACCESS_TOKEN` value in an `X-AI-Token` header.
+  In the app, paste that token into the "AI access token" field. Requests without
+  a valid token get `403` and never trigger a Gemini call, so public visitors
+  cannot exhaust the owner's credits. If no token is configured on the server, the
+  AI endpoint is disabled for everyone (`503`).
+
+To verify the live Gemini call works after setting your key:
+
+```bash
+python manual_ai_check.py
+```
+
+### Endpoints
+
+- **POST `/api/upload`** — resume file + job description → ATS score, matched
+  keywords, missing keywords, extracted text. Free and open to everyone.
+- **POST `/api/refine`** — bullet points + job description → AI-rewritten
+  `before`/`after` pairs. Access-controlled (see above).
+
+### Run the backend tests
 
 ```bash
 pytest -q
 ```
 
+Tests mock the Gemini API, so they make no network calls and need no key.
+
 ## Architecture
 
-### Tier breakdown (Session 2 studio)
+The system is an n-tier (layered) application. Dependencies point downward only:
+Presentation → Service → Domain / Data. The Domain tier holds the business rules
+and never imports FastAPI or the AI SDK; the Data tier holds the parsing and the
+external Gemini call.
 
-| Tier | Class | Responsibilities in THIS system |
+### Tier breakdown
+
+| Tier | Component | Responsibilities in THIS system |
 | :--- | :--- | :--- |
-| **Presentation** | `ResumeUploadView` | Manages the drag-and-drop UI and client-side file validation. |
-| | `ScoreVisualizer` | Renders the calculated ATS keyword overlap and audit results. |
-| | `JobDescriptionForm` | Collects and sanitizes the target job posting text. |
-| **Service** | `ResumeAnalysisService` | Orchestrates the flow of parsing the resume, running domain audits, and returning the complete analysis. |
-| | `CoverLetterService` | Coordinates passing parsed data and job requirements to the AI client to generate drafts. |
-| **Domain** | `Resume` | Represents the candidate's extracted data and guards its own state. |
-| | `ATSScorer` | Calculates the deterministic keyword overlap percentage. |
-| | `BulletPointAuditor` | Evaluates experience bullets to flag missing quantified metrics. |
-| **Data** | `DocumentParser` | Extracts raw text and structural sections from uploaded PDF/DOCX files. |
-| | `GeminiAIClient` | Handles the direct HTTP network calls to Google AI Studio. |
-| | `ResumeRepository` | Manages saving and loading analysis results to the database. |
+| **Presentation** | Next.js page (`frontend/app/page.js`) | Drag-and-drop upload with client-side PDF/DOCX validation, job-description and bullets input, score + keyword display, AI rewrite panel. |
+| | FastAPI routes (`main.py`) | `/api/upload` and `/api/refine` HTTP endpoints; token gate; maps errors to HTTP responses. |
+| **Service** | `ResumeAnalysisService` | Orchestrates parsing, scoring, auditing, and the AI call. Holds no business rules itself. |
+| **Domain** | `ATSScorer` | Deterministic keyword scoring against a curated skill set; returns score + matched + missing keywords. |
+| | `BulletPointAuditor` | Flags experience bullets that contain no quantified metric. |
+| **Data** | `ResumeParser` / `PdfParser` / `DocxParser` / `ParserFactory` | Factory-Method document parsing: extracts raw text from PDF/DOCX. |
+| | `GeminiAIClient` | The only component that talks to the Gemini SDK / network; builds the prompt and parses the response. |
+| | `ResumeRepository` | Persists each analysis to SQLite behind a repository interface (swappable store). |
 
-### C4 — Context & Container (Session 3 studio)
+### C4 — Context & Container
 
 ```mermaid
-%% Replace this placeholder with YOUR system's context diagram.
 flowchart TB
-    user([Job Candidate]) -->|Uploads resume and Job description| system[Resume Analyzer System]
-    system -->|sends text for bullet refinement| gemini[Google AI studio/ Gemini API]
+    user([Job Candidate]) -->|Uploads resume and job description| system[Resume Optimizer and ATS Matcher]
+    system -->|Sends flagged bullets for rewriting| gemini[Google AI Studio / Gemini API]
 ```
 
 ```mermaid
-%% Container view: your containers should match the tier table above.
 flowchart TB
-    user([Job Candidate]) -->|Uses via browser| ui[Web UI: Next.js<br/>Presentation Tier]
-        
-    subgraph Backend [Backend Application]
-    ui -->|REST/JSON calls| svc[FastAPI / Flask App<br/>Service & Domain Tiers]
+    user([Job Candidate]) -->|Uses via browser| ui[Web UI: Next.js<br/>Presentation]
+
+    subgraph Backend [FastAPI Backend]
+    ui -->|REST/JSON| svc[Service tier<br/>ResumeAnalysisService]
+    svc --> dom[Domain tier<br/>ATSScorer, BulletPointAuditor]
+    svc --> data[Data tier<br/>ParserFactory, ResumeRepository]
     end
-        
-    svc -->|Reads/Writes analysis| db[(PostgreSQL / SQLite<br/>Data Tier)]
-    svc -->|HTTP API calls| gemini[Google AI Studio<br/>External System]
+
+    svc -->|reads/writes| db[(SQLite<br/>analyses)]
+    svc -->|HTTPS, access-controlled| gemini[Google AI Studio<br/>External System]
 ```
 
-### UML — Class & Sequence (Session 3 studio)
+### UML — Class & Sequence
 
 ```mermaid
-%% Class diagram: your 3–4 core domain classes.
 classDiagram
-    class Resume {
-        -rawText: String
-        -experienceBullets: List~String~
-        +getBullets() List~String~
+    class ResumeAnalysisService {
+        +analyze(filename, content, job_text) dict
+        +refine_bullets(bullets, job_text) list
     }
-    
-    class JobDescription {
-        -rawText: String
-        -targetKeywords: List~String~
-        +getKeywords() List~String~
-    }
-    
     class ATSScorer {
-        +calculateOverlap(Resume, JobDescription) float
+        +score_report(resume_text, job_text) dict
+        +extract_keywords(job_text) list
     }
-    
     class BulletPointAuditor {
-        +flagUnquantified(bullets: List~String~) List~String~
+        +flag_unquantified(bullets) list
+    }
+    class ParserFactory {
+        +get_parser(filename) ResumeParser
+    }
+    class GeminiAIClient {
+        +generate_revisions(bullets, keywords) list
     }
 
-    Resume "1" --> "1" ATSScorer : evaluated by
-    JobDescription "1" --> "1" ATSScorer : sets criteria
-    Resume "1" --> "1" BulletPointAuditor : audited by
+    ResumeAnalysisService --> ATSScorer : uses
+    ResumeAnalysisService --> BulletPointAuditor : uses
+    ResumeAnalysisService --> ParserFactory : uses
+    ResumeAnalysisService --> GeminiAIClient : uses
 ```
 
 ```mermaid
-%% Sequence diagram: ONE core use case, end to end.
 sequenceDiagram
     actor U as Candidate
-    participant UI as ResumeUploadView (Presentation)
+    participant UI as Next.js UI (Presentation)
     participant S as ResumeAnalysisService (Service)
-    participant P as DocumentParser (Data)
+    participant P as ParserFactory (Data)
     participant Dom as ATSScorer (Domain)
-    participant AI as GeminiAIClient (Data)
 
-    U->>UI: Uploads Resume & pastes Job Desc
+    U->>UI: Upload resume + paste job description
     UI->>S: analyze(file, jobText)
-    
-    %% Downward dependency flow
-    S->>P: extractText(file)
-    P-->>S: rawText & sections
-    
-    S->>Dom: calculateOverlap(resume, jobText)
-    Dom-->>S: keywordScore & unquantifiedBullets
-    
-    S->>AI: generateRevisions(unquantifiedBullets, jobText)
-    AI-->>S: revisedBullets
-    
-    S-->>UI: analysisResults(score, revisions)
-    UI-->>U: Displays score & AI suggestions
+    S->>P: get_parser(filename).extract(content)
+    P-->>S: resume text
+    S->>Dom: score_report(resumeText, jobText)
+    Dom-->>S: score, matched, missing
+    S-->>UI: analysis result
+    UI-->>U: score + matched/missing keyword chips
 ```
 
 ## Architecture Decision Records
 
-Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
+Decisions live in [`docs/adr/`](docs/adr/). Creational-pattern map:
+[`docs/pattern-map.md`](docs/pattern-map.md).
 
 | # | Decision | Status |
 |---|----------|--------|
 | [001](docs/adr/adr-001.md) | Build a Resume Analyzer using deterministic logic and Google Gemini | accepted |
-| [002](docs/adr/adr-002.md) | [Utilizing FastAPI Swagger UI for Initial Working Slice] | [accepted] |
-| [003](docs/adr/adr-003.md) | Protect the AI feature with a shared access token and env-var secrets | [accepted] |
+| [002](docs/adr/adr-002.md) | Use the FastAPI Swagger UI for the initial working slice | superseded by Next.js frontend |
+| [003](docs/adr/adr-003.md) | Protect the AI feature with a shared access token and env-var secrets | accepted |
+| [004](docs/adr/adr-004.md) | Persist analysis results with SQLite behind a repository | accepted |
 
-
-## Weekly log (optional but recommended)
-
-A one-line note per week keeps your commit story readable:
+## Weekly log
 
 - Week 1 (Aug 24): repo created, project idea drafted
 - Week 2 (Aug 31): Tier breakdown mapped.
 - Week 3 (Sep 7): C4 Context/Container rendered in Mermaid.
 - Week 4 (Sep 14): UML Class/Sequence diagrams rendered in Mermaid.
 - Week 5 (Sep 21): Project board created, core use cases logged as Issues, CI pipeline initialized (green), and ADR-001 written.
-- Week 6 (Sep 28): Code for feature 1
-- Week 7 (Oct 5): Finish feature 1, added feature 2, and added ADR-002.
-- Week 8 (Oct 12): Wire Domain into the endpoint: connect ATSScorer + BulletPointAuditor into ResumeAnalysisService so /api/upload returns score + flagged bullets end-to-end
-- Week 9 (Oct 19): Issue #3: Gemini bullet refinement (GeminiAIClient in the Data tier, /api/refine endpoint)
-- Week 10 (Oct 26): ResumeRepository (SQLite behind an interface)
-- Week 11 (Nov 2): Issue #5: Next.js frontend (ResumeUploadView, ScoreVisualizer)
-- Week 12 (Nov 9): Cover-letter generation (CoverLetterService) + added ADR-003
-- Week 13 (Nov 16): Hardening + final doc update: SOLID/pattern mapping, demo video
+- Week 6 (Sep 28): Issue #1 — PDF/DOCX parsing endpoint.
+- Week 7 (Oct 5): Finished Issue #1; added Issue #2 (ATS scoring); ADR-002.
+- Week 8 (Oct 12): Wired the Domain scorer into `/api/upload` end-to-end.
+- Week 9 (Oct 19): Issue #3 — Gemini bullet refinement (GeminiAIClient, `/api/refine`, token security, ADR-003).
+- Week 10-11 (Oct 26 - Nov 9): Issue #4 — Next.js frontend, curated-skill ATS scoring, Factory Method parser, pattern map.
+- Week 12-13 (Nov 16): Hardening (AI call timeout), final doc update, demo.
 
-## Known Issues
+## Issues (use-case backlog)
 
-- Add issue 1: Setup PDF/DOCX Document Parsing endpoint
-- Add issue 2: Implement ATS Keyword Overlap Scoring
-- Add issue 3: AI Bullet Point Refinement
-- Add issue 4: UI File Upload Visualization
+- Issue #1: Setup PDF/DOCX document parsing endpoint — **done**
+- Issue #2: Implement ATS keyword-overlap scoring — **done**
+- Issue #3: AI bullet-point refinement (Gemini, access-controlled) — **done**
+- Issue #4: UI file upload & visualization (Next.js frontend) — **done**
+
+## SOLID & design patterns — where they live
+
+- **Single Responsibility** — each class has one job: `ATSScorer` (scoring),
+  `BulletPointAuditor` (auditing), `document_parser` classes (parsing),
+  `GeminiAIClient` (the AI call), `ResumeRepository` (persistence).
+- **Open/Closed** — `data/document_parser.py`: adding a file format is a new
+  `ResumeParser` subclass + one registry entry, with no edits to existing
+  parsers (replaced the old growing `if/elif`).
+- **Dependency Inversion** — `service/resume_analysis_service.py`: the service
+  receives its scorer, auditor, AI client, and repository **injected** in the
+  constructor and depends on those abstractions, not concretes. Tests inject
+  fakes; no network or database needed.
+- **Factory Method** (creational pattern) — `ParserFactory.get_parser()` picks
+  the right parser per file type. Full honest map in
+  [`docs/pattern-map.md`](docs/pattern-map.md) (Factory Method = genuine fit;
+  reasoned "no fit" for Abstract Factory, Builder, Prototype, Singleton).
+
+## Known limitations
+
+- Keyword matching uses a curated skills dictionary (`domain/ats_scorer.py`);
+  skills not in that list are not scored. Extend the dictionary as needed.
+- The AI rewrite depends on Google Gemini availability; the client falls back
+  across several free-tier models, but all can be busy at once.
+- Analyses are persisted to SQLite, but there is no history/read screen in the
+  UI yet (results are stored, not surfaced back to the user).
