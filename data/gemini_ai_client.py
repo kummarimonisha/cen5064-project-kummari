@@ -2,7 +2,7 @@ import os
 import time
 
 # A newline, built with chr(10) instead of the escape sequence so copy-pasting
-# this file can never turn a backslash-n into a real line break inside a string.
+# this file can never turn a backslash-n into a real line break inside a string
 NL = chr(10)
 
 
